@@ -15,80 +15,55 @@ load_dotenv()
 db_url = psycopg2.connect(os.getenv("DATABASE_URL"))
 
 
-class Song(BaseModel):
-    title: str
-    artist: str
-
-
-class Playlist(BaseModel):
-    title: str
-    songs: List[Song] = []
-
-
 class User_Input(BaseModel):
     username: constr(min_length=2)  # type: ignore
     password: constr(min_length=1)  # type: ignore
 
 
-class User_Output(BaseModel):
-    username: constr(min_length=2)  # type: ignore
-    playlists: List[Playlist] = []
 
 
 @app.post("/create_user")
 def create_user(user: User_Input):
     add_to_db = db_url.cursor()
-    # hased password add a salt into the database
+    add_to_db.execute("SELECT username FROM users WHERE username = %s", (user.username,)) # col and table name
+    check_user = add_to_db.fetchone()
+
+    if check_user: 
+        raise HTTPException(status_code=400, detail="Username already taken, please try another one.")
+
+    password_bytes = user.password.encode('utf-8')
+    hashed_password = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+
     user_query = "INSERT INTO users (username, password) VALUES (%s, %s)"
-    user_values = (user.username, user.password)  # change the user.pass to hashed
+    user_values = (user.username, hashed_password)  
+    add_to_db.execute(user_query, user_values)
 
-    try:
-        add_to_db.execute(user_query, user_values)
-        db_url.commit()
-        return {"message": "User created successfully"}
-
-    except psycopg2.errors.UniqueViolation:
-        db_url.rollback()
-        raise HTTPException(status_code=400, detail="Username already exists")
-
-    except Exception as e:
-        db_url.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-
-    finally:
-        add_to_db.close()
-
+    user_r = add_to_db.execute("SELECT id FROM users WHERE username = %s", (user.username,))
+    user_id = user_r[0]
+    db_url.commit()
+    while not google_oauth_connected():
+        google_login(user_id)
+    
+    while not spotify_oauth_connected():
+        connect_spotify_oauth(user_id)
+    return {"message": "User created successfully", "user_id": user_id}
 
 @app.get("/login")
-def login(username: str, password: str):
-    get_from_db = db_url.cursor()
-    user_query = "SELECT username, password FROM users WHERE username = %s"
-    user_value = (username,)
+def login(user: User_Input, user_id: str):
+    add_to_db = db_url.cursor()
+    add_to_db.execute("SELECT username FROM users WHERE username = %s", (user.username,)) # col and table name
+    getuser = add_to_db.fetchone()
 
-    try:
-        get_from_db.execute(user_query, user_value)
-        results = get_from_db.fetchone()
+    add_to_db.execute("SELECT password FROM users WHERE username = %s", (user.username,)) # col and table name
+    getpass = add_to_db.fetchone()
 
-        if results is None:
-            raise HTTPException(
-                status_code=400, detail="Username or Password are incorrect!"
-            )
-        db_username, db_password = results
+    if getuser is None:
+         raise HTTPException(status_code=401, detail="Wrong username or password.")
+    
+    if getpass is None:
+        raise HTTPException(status_code=401, detail="Wrong username or password.")
 
-        if db_password != password:
-            raise HTTPException(
-                status_code=400, detail="Username or Password are incorrect!"
-            )
-
-        user = User_Output(username=db_username, playlists=[])
-        return user
-
-    except Exception as e:
-        db_url.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-
-    finally:
-        get_from_db.close()
+   
 
 
 @app.get("/google_auth")
@@ -102,7 +77,7 @@ def google_login(username: str):
             "token_uri": "https://oauth2.googleapis.com/token",
         }
     }
-    # change below
+    
     state_json = json.dumps({"username": username})
     state = base64.urlsafe_b64encode(state_json.encode()).decode()
     flow = Flow.from_client_config(
@@ -118,7 +93,7 @@ def google_login(username: str):
 
 
 @app.get("/google_auth/callback")
-def get_tokens(state: str, code: str):
+def get_google_tokens(state: str, code: str):
     state_json = base64.urlsafe_b64encode(state_json.encode()).decode()
     state_data = json.loads(state_json)
     username = state_data.get("username")
