@@ -29,6 +29,7 @@ def create_user(user: User_Input):
     check_user = add_to_db.fetchone()
 
     if check_user: 
+        add_to_db.close()
         raise HTTPException(status_code=400, detail="Username already taken, please try another one.")
 
     password_bytes = user.password.encode('utf-8')
@@ -39,29 +40,29 @@ def create_user(user: User_Input):
     add_to_db.execute(user_query, user_values)
 
     user_r = add_to_db.execute("SELECT id FROM users WHERE username = %s", (user.username,))
+    user_r = add_to_db.fetchone()
     user_id = user_r[0]
     db_url.commit()
-    while not google_oauth_connected():
-        google_login(user_id)
-    
-    while not spotify_oauth_connected():
-        connect_spotify_oauth(user_id)
-    return {"message": "User created successfully", "user_id": user_id}
+    add_to_db.close()
+    return RedirectResponse(url=f"/google_auth?user_id={user_id}", status_code=303)
 
-@app.get("/login")
-def login(user: User_Input, user_id: str):
+@app.post("/login")
+def login(user: User_Input):
     add_to_db = db_url.cursor()
-    add_to_db.execute("SELECT username FROM users WHERE username = %s", (user.username,)) # col and table name
-    getuser = add_to_db.fetchone()
 
-    add_to_db.execute("SELECT password FROM users WHERE username = %s", (user.username,)) # col and table name
-    getpass = add_to_db.fetchone()
+    add_to_db.execute("SELECT id, password FROM users WHERE username = %s", (user.username,)) # col and table name
+    user_info = add_to_db.fetchone()
 
-    if getuser is None:
-         raise HTTPException(status_code=401, detail="Wrong username or password.")
-    
-    if getpass is None:
+    if not user_info:
+        add_to_db.close()
         raise HTTPException(status_code=401, detail="Wrong username or password.")
+    
+    user_id, h_pass = user_info
+
+    if not bcrypt.checkpw(user.password.encode('utf-8'), h_pass.encode('utf-8') if isinstance(h_pass, str) else h_pass):
+        add_to_db.close()
+        raise HTTPException(status_code=401, detail="Wrong username or password.")
+    
 
    
 
