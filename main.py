@@ -35,12 +35,14 @@ class Playlist_Input(BaseModel):
     user_id: int
     platform: Platform
 
+
 class Copy_Playlist_Input(BaseModel):
     playlist_name: constr(min_length=1)  # type: ignore
     platform: Platform
     user_id: int
     sync: bool = False
- 
+
+
 class Sync_Playlist_Input(BaseModel):
     playlist_name: constr(min_length=1)  # type: ignore
     user_id: int
@@ -126,9 +128,7 @@ def get_valid_spotify_token(user_id: int) -> str:
             token_data = response.json()
             access_token = token_data["access_token"]
             expiry = datetime.now() + timedelta(seconds=token_data["expires_in"])
-            new_refresh_token = token_data.get(
-                "refresh_token", refresh_token
-            )  
+            new_refresh_token = token_data.get("refresh_token", refresh_token)
 
             open_to_db.execute(
                 "UPDATE users SET spotify_access_token = %s, spotify_refresh_token = %s, spotify_token_expiry = %s WHERE id = %s",
@@ -151,7 +151,7 @@ def create_user(user: User_Input):
     open_to_db = db_url.cursor()
     open_to_db.execute(
         "SELECT username FROM users WHERE username = %s", (user.username,)
-    )  
+    )
     check_user = open_to_db.fetchone()
 
     if check_user:
@@ -306,41 +306,51 @@ def create_playlist(data: Playlist_Input):
         "message": f"Playlists created and synced successfully for user {data.user_id}."
     }
 
+
 @app.post("/copy_playlist")
 def copy_playlist(data: Copy_Playlist_Input):
     open_to_db = db_url.cursor()
- 
+
     open_to_db.execute(
         "SELECT id, platform, songs, youtube_playlist_id, spotify_playlist_id FROM playlists WHERE playlist_name = %s AND user_id = %s",
-        (data.playlist_name, data.user_id)
+        (data.playlist_name, data.user_id),
     )
     playlist_info = open_to_db.fetchone()
- 
+
     if not playlist_info:
         open_to_db.close()
-        raise HTTPException(status_code=404, detail="Playlist does not exist on this platform. Try again.")
- 
+        raise HTTPException(
+            status_code=404,
+            detail="Playlist does not exist on this platform. Try again.",
+        )
+
     pl_id, current_platform, songs, yt_id, sp_id = playlist_info
- 
+
     if current_platform == Platform.BOTH:
         open_to_db.close()
-        raise HTTPException(status_code=400, detail="Sorry, this playlist already exists on both platforms.")
- 
+        raise HTTPException(
+            status_code=400,
+            detail="Sorry, this playlist already exists on both platforms.",
+        )
+
     if data.platform != current_platform:
         open_to_db.close()
-        raise HTTPException(status_code=400, detail=f"Playlist does not exist on {data.platform}. Try again.")
- 
-    target_platform = Platform.SPOTIFY if data.platform == Platform.YOUTUBE else Platform.YOUTUBE
- 
+        raise HTTPException(
+            status_code=400,
+            detail=f"Playlist does not exist on {data.platform}. Try again.",
+        )
+
+    target_platform = (
+        Platform.SPOTIFY if data.platform == Platform.YOUTUBE else Platform.YOUTUBE
+    )
+
     yt_access_token = get_valid_youtube_token(data.user_id)
     sp_access_token = get_valid_spotify_token(data.user_id)
- 
+
     if target_platform == Platform.SPOTIFY:
         dsd
     else:
         sdsd
- 
-    
 
 
 @app.get("/google_auth/callback")
