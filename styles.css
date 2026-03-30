@@ -1,0 +1,570 @@
+/* =============================================
+   CSS VARIABLES & RESET
+   ============================================= */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --color-bg:              #f0f2f7;
+  --color-surface:         #ffffff;
+  --color-primary:         #7c3aed;
+  --color-primary-hover:   #6d28d9;
+  --color-danger:          #dc2626;
+  --color-danger-hover:    #b91c1c;
+  --color-text:            #111827;
+  --color-text-muted:      #6b7280;
+  --color-border:          #e5e7eb;
+  --color-error-bg:        #fef2f2;
+  --color-error-border:    #fecaca;
+  --color-navbar:          #1e1b4b;
+  --color-navbar-hover:    rgba(255, 255, 255, 0.15);
+  --shadow-card:           0 4px 28px rgba(0, 0, 0, 0.11);
+  --shadow-modal:          0 8px 48px rgba(0, 0, 0, 0.22);
+  --radius-card:           18px;
+  --radius-modal:          14px;
+  --radius-btn:            8px;
+  --radius-input:          8px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+
+/* =============================================
+   PAGES — BASE
+   ============================================= */
+
+.page {
+  min-height: 100vh;
+}
+
+/* Auth pages center their card */
+.page-auth {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #1e1b4b 0%, #5b21b6 45%, #a855f7 100%);
+  padding: 2rem 1rem;
+}
+
+
+/* =============================================
+   AUTH CARD
+   ============================================= */
+
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-card);
+  padding: 2.75rem 2.25rem 2.25rem;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.card h1 {
+  font-size: 1.45rem;
+  font-weight: 800;
+  text-align: center;
+  color: var(--color-primary);
+  line-height: 1.3;
+  margin-bottom: 0.25rem;
+}
+
+
+/* =============================================
+   FORM GROUPS
+   ============================================= */
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.form-group label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  letter-spacing: 0.01em;
+}
+
+.form-group input,
+.form-group select {
+  padding: 0.7rem 0.9rem;
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-input);
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--color-text);
+  background: #fafafa;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s, background 0.18s;
+  width: 100%;
+}
+
+.form-group input::placeholder {
+  color: #9ca3af;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--color-primary);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+}
+
+.form-group select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.85rem center;
+  padding-right: 2.25rem;
+}
+
+
+/* =============================================
+   ERROR MESSAGES
+   ============================================= */
+
+.error-msg {
+  color: var(--color-danger);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.55rem 0.85rem;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: 6px;
+  line-height: 1.4;
+}
+
+
+/* =============================================
+   BUTTONS
+   ============================================= */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.65rem 1.25rem;
+  border: none;
+  border-radius: var(--radius-btn);
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.18s, opacity 0.18s, transform 0.1s, box-shadow 0.18s;
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+/* Primary */
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: var(--color-primary-hover);
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.35);
+}
+
+/* Secondary */
+.btn-secondary {
+  background: #f3f4f6;
+  color: var(--color-text);
+  border: 1.5px solid var(--color-border);
+}
+.btn-secondary:hover {
+  background: #e5e7eb;
+}
+
+/* Danger */
+.btn-danger {
+  background: var(--color-danger);
+  color: #fff;
+}
+.btn-danger:hover {
+  background: var(--color-danger-hover);
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.32);
+}
+
+/* Full-width (auth pages) */
+.btn-full {
+  width: 100%;
+  padding: 0.8rem;
+  font-size: 1rem;
+}
+
+/* Navbar buttons */
+.btn-nav {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.83rem;
+  padding: 0.48rem 0.85rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.btn-nav:hover {
+  background: var(--color-navbar-hover);
+}
+
+.btn-nav-danger {
+  background: rgba(220, 38, 38, 0.75);
+  border-color: rgba(220, 38, 38, 0.4);
+}
+.btn-nav-danger:hover {
+  background: rgba(185, 28, 28, 0.9);
+}
+
+.btn-nav-logout {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  margin-left: 0.6rem;
+}
+.btn-nav-logout:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* Subtle text link */
+.link-subtle {
+  display: block;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.18s;
+  background: none;
+  border: none;
+  font-family: inherit;
+  padding: 0.25rem 0;
+}
+.link-subtle:hover {
+  color: var(--color-primary);
+}
+
+
+/* =============================================
+   NAVBAR
+   ============================================= */
+
+#navbar {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: var(--color-navbar);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 2rem;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.25);
+  gap: 1rem;
+}
+
+#navbar-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+}
+
+#navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+
+/* =============================================
+   MODALS
+   ============================================= */
+
+.modal-container {
+  position: fixed;
+  inset: 0;
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.58);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+.modal-box {
+  position: relative;
+  z-index: 1;
+  background: var(--color-surface);
+  border-radius: var(--radius-modal);
+  padding: 2rem 2rem 1.75rem;
+  width: 100%;
+  max-width: 460px;
+  box-shadow: var(--shadow-modal);
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.modal-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--color-text);
+  padding-right: 2rem;
+}
+
+/* X close button */
+.btn-close-x {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  font-size: 1.05rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 0.3rem 0.45rem;
+  border-radius: 6px;
+  line-height: 1;
+  transition: background 0.18s, color 0.18s;
+}
+.btn-close-x:hover {
+  background: #f3f4f6;
+  color: var(--color-text);
+}
+
+/* Modal action row */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+/* Delete confirm modal (centered layout) */
+.modal-box-confirm {
+  text-align: center;
+  max-width: 380px;
+  gap: 1.4rem;
+}
+
+#delete-confirm-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--color-text);
+}
+
+.confirm-subtitle {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  line-height: 1.55;
+}
+
+.modal-actions-confirm {
+  justify-content: center;
+  gap: 1rem;
+}
+
+.modal-actions-confirm .btn {
+  min-width: 110px;
+}
+
+
+/* =============================================
+   DASHBOARD PAGE
+   ============================================= */
+
+#page-dashboard {
+  background: var(--color-bg);
+  min-height: 100vh;
+}
+
+
+/* =============================================
+   === DESKTOP LAYOUT ===
+   ============================================= */
+
+#playlist-area {
+  padding: 2.25rem 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.playlist-card {
+  background: var(--color-surface);
+  border-radius: 14px;
+  padding: 1.75rem 1.25rem 1.5rem;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.07);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.playlist-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.13);
+  border-color: rgba(124, 58, 237, 0.2);
+}
+
+.playlist-icon {
+  font-size: 2.4rem;
+  width: 68px;
+  height: 68px;
+  background: linear-gradient(135deg, rgba(124, 58, 237, 0.1), rgba(168, 85, 247, 0.12));
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.playlist-name {
+  font-size: 0.975rem;
+  font-weight: 700;
+  color: var(--color-text);
+  text-align: center;
+  line-height: 1.3;
+}
+
+.playlist-date {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+
+/* =============================================
+   === MOBILE LAYOUT (comment out if not needed) ===
+   ============================================= */
+@media (max-width: 700px) {
+
+  /* Auth card */
+  .card {
+    padding: 2rem 1.5rem;
+    border-radius: 14px;
+  }
+
+  .card h1 {
+    font-size: 1.2rem;
+  }
+
+  /* Navbar */
+  #navbar {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.85rem 1rem;
+    gap: 0.6rem;
+  }
+
+  #navbar-title {
+    font-size: 1rem;
+  }
+
+  #navbar-actions {
+    width: 100%;
+    gap: 0.35rem;
+  }
+
+  .btn-nav {
+    font-size: 0.78rem;
+    padding: 0.4rem 0.65rem;
+  }
+
+  .btn-nav-logout {
+    margin-left: 0;
+  }
+
+  /* Playlist area — single column list */
+  #playlist-area {
+    display: flex;
+    flex-direction: column;
+    padding: 1rem;
+    gap: 0.75rem;
+  }
+
+  .playlist-card {
+    flex-direction: row;
+    align-items: center;
+    padding: 1rem 1.1rem;
+    gap: 1rem;
+    border-radius: 10px;
+    text-align: left;
+  }
+
+  .playlist-icon {
+    font-size: 1.7rem;
+    width: 50px;
+    height: 50px;
+    flex-shrink: 0;
+  }
+
+  .playlist-name {
+    font-size: 0.93rem;
+    text-align: left;
+  }
+
+  .playlist-date {
+    font-size: 0.78rem;
+  }
+
+  /* Modals */
+  .modal-box {
+    padding: 1.6rem 1.4rem 1.4rem;
+    max-width: 100%;
+    border-radius: 12px;
+  }
+
+  .modal-title {
+    font-size: 1.05rem;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+    gap: 0.6rem;
+  }
+
+  .modal-actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .modal-actions-confirm {
+    flex-direction: row;
+  }
+
+  .modal-actions-confirm .btn {
+    width: auto;
+    flex: 1;
+  }
+
+}
