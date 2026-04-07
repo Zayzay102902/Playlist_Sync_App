@@ -115,17 +115,18 @@ def get_youtube_songs(yt_id: str, yt_access_token: str):
 
 def get_spotify_songs(sp_id: str, sp_access_token: str):
     response = requests.get(
-        f"https://api.spotify.com/v1/playlists/{sp_id}/tracks",
+        f"https://api.spotify.com/v1/playlists/{sp_id}/items",
         headers={"Authorization": f"Bearer {sp_access_token}"},
     )
     songs = []
     for item in response.json().get("items", []):
-        songs.append(
-            {
-                "title": item["track"]["name"],
-                "artist": item["track"]["artists"][0]["name"],
-            }
-        )
+        if item.get("item") and item["item"].get("name"):
+            songs.append(
+                {
+                    "title": item["item"]["name"],
+                    "artist": item["item"]["artists"][0]["name"],
+                }
+            )
     return songs
 
 
@@ -278,7 +279,6 @@ def create_user(user: User_Input):
         open_to_db.execute("SELECT id FROM users WHERE username = %s", (user.username,))
         user_r = open_to_db.fetchone()
         user_id = user_r[0]
-        open_to_db.execute("INSERT INTO playlists (user_id) VALUES (%s)", (user_id,))
         db_url.commit()
     except Exception as e:
         db_url.rollback()
@@ -362,15 +362,14 @@ def create_playlist(data: Playlist_Input):
 
         try:
             open_to_db.execute(
-                """UPDATE playlists 
-                   SET playlist_name = %s, platform = %s, songs = %s, youtube_playlist_id = %s
-                   WHERE user_id = %s AND playlist_name IS NULL""",
+                """INSERT INTO playlists (user_id, playlist_name, platform, songs, youtube_playlist_id)
+                    VALUES (%s, %s, %s, %s, %s)""",
                 (
+                    data.user_id,
                     data.name,
                     Platform.YOUTUBE,
                     json.dumps([]),
                     yt_playlist_id,
-                    data.user_id,
                 ),
             )
             db_url.commit()
@@ -403,15 +402,14 @@ def create_playlist(data: Playlist_Input):
 
         try:
             open_to_db.execute(
-                """UPDATE playlists 
-                   SET playlist_name = %s, platform = %s, songs = %s, spotify_playlist_id = %s
-                   WHERE user_id = %s AND playlist_name IS NULL""",
+                """INSERT INTO playlists (user_id, playlist_name, platform, songs, spotify_playlist_id)
+                    VALUES (%s, %s, %s, %s, %s)""",
                 (
+                    data.user_id,
                     data.name,
                     Platform.SPOTIFY,
                     json.dumps([]),
                     sp_playlist_id,
-                    data.user_id,
                 ),
             )
             db_url.commit()
@@ -429,13 +427,15 @@ def create_playlist(data: Playlist_Input):
         if check_youtube_playlist_exists(data.name, yt_access_token):
             open_to_db.close()
             raise HTTPException(
-                status_code=400, detail="Playlist already exists on YouTube."
+                status_code=400,
+                detail="Playlist already exists on YouTube. Please use 'Copy Playlist' instead.",
             )
 
         if check_spotify_playlist_exists(data.name, sp_access_token):
             open_to_db.close()
             raise HTTPException(
-                status_code=400, detail="Playlist already exists on Spotify."
+                status_code=400,
+                detail="Playlist already exists on Spotify. Please use 'Copy Playlist' instead.",
             )
 
         yt_response = requests.post(
@@ -463,16 +463,15 @@ def create_playlist(data: Playlist_Input):
 
         try:
             open_to_db.execute(
-                """UPDATE playlists 
-                   SET playlist_name = %s, platform = %s, songs = %s, youtube_playlist_id = %s, spotify_playlist_id = %s
-                   WHERE user_id = %s AND playlist_name IS NULL""",
+                """INSERT INTO playlists (user_id, playlist_name, platform, songs, youtube_playlist_id, spotify_playlist_id)
+                    VALUES (%s, %s, %s, %s, %s, %s)""",
                 (
+                    data.user_id,
                     data.name,
                     Platform.BOTH,
                     json.dumps([]),
                     yt_playlist_id,
                     sp_playlist_id,
-                    data.user_id,
                 ),
             )
             db_url.commit()
@@ -557,7 +556,7 @@ def copy_playlist(data: Copy_Playlist_Input):
 
         if track_uris:
             requests.post(
-                f"https://api.spotify.com/v1/playlists/{new_platform_id}/tracks",
+                f"https://api.spotify.com/v1/playlists/{new_platform_id}/items",
                 headers={
                     "Authorization": f"Bearer {sp_access_token}",
                     "Content-Type": "application/json",
@@ -687,7 +686,7 @@ def sync_playlist(data: Sync_Playlist_Input):
 
         if track_uris:
             requests.put(
-                f"https://api.spotify.com/v1/playlists/{sp_id}/tracks",
+                f"https://api.spotify.com/v1/playlists/{sp_id}/items",
                 headers={
                     "Authorization": f"Bearer {sp_access_token}",
                     "Content-Type": "application/json",
@@ -702,6 +701,7 @@ def sync_playlist(data: Sync_Playlist_Input):
             f"https://www.googleapis.com/youtube/v3/playlistItems?part=id&playlistId={yt_id}",
             headers={"Authorization": f"Bearer {yt_access_token}"},
         )
+        print(yt_items_response.json())
         for item in yt_items_response.json().get("items", []):
             requests.delete(
                 f"https://www.googleapis.com/youtube/v3/playlistItems?id={item['id']}",
@@ -839,35 +839,35 @@ def add_playlist(data: Add_Playlist_Input):
 
 
 @app.delete("/delete_playlist")
-def delete_playlist(data: Delete_Playlist_Input):
+def delete_playlist(name: str, platform: Platform, user_id: int):
     open_to_db = db_url.cursor()
 
-    if data.platform == Platform.BOTH:
+    if platform == Platform.BOTH:
         open_to_db.execute(
             "SELECT id, platform, youtube_playlist_id, spotify_playlist_id FROM playlists WHERE playlist_name = %s AND user_id = %s",
-            (data.name, data.user_id),
+            (name, user_id),
         )
-    elif data.platform == Platform.YOUTUBE:
+    elif platform == Platform.YOUTUBE:
         open_to_db.execute(
             "SELECT id, platform, youtube_playlist_id, spotify_playlist_id FROM playlists WHERE playlist_name = %s AND user_id = %s AND platform = %s",
-            (data.name, data.user_id, Platform.YOUTUBE),
+            (name, user_id, Platform.YOUTUBE),
         )
     else:
         open_to_db.execute(
             "SELECT id, platform, youtube_playlist_id, spotify_playlist_id FROM playlists WHERE playlist_name = %s AND user_id = %s AND platform = %s",
-            (data.name, data.user_id, Platform.SPOTIFY),
+            (name, user_id, Platform.SPOTIFY),
         )
 
     playlist_info = open_to_db.fetchone()
 
     if not playlist_info:
         open_to_db.close()
-        return {"message": f"Playlist '{data.name}' not found. Nothing to delete."}
+        return {"message": f"Playlist '{name}' not found. Nothing to delete."}
 
     pl_id, current_platform, yt_id, sp_id = playlist_info
 
-    yt_access_token = get_valid_youtube_token(data.user_id)
-    sp_access_token = get_valid_spotify_token(data.user_id)
+    yt_access_token = get_valid_youtube_token(user_id)
+    sp_access_token = get_valid_spotify_token(user_id)
 
     if current_platform in (Platform.YOUTUBE, Platform.BOTH) and yt_id:
         requests.delete(
@@ -891,7 +891,7 @@ def delete_playlist(data: Delete_Playlist_Input):
         open_to_db.close()
 
     return {
-        "message": f"Playlist '{data.name}' deleted successfully from {current_platform}."
+        "message": f"Playlist '{name}' deleted successfully from {current_platform}."
     }
 
 

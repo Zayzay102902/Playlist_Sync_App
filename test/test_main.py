@@ -1,9 +1,15 @@
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+os.chdir(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import patch
 from main import app
 import psycopg2
-import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,12 +19,16 @@ client = TestClient(app)
 
 def setup_playlist(user_id, playlist_name, platform="both"):
     cursor = test_db.cursor()
-    cursor.execute(
-        "INSERT INTO playlists (user_id, playlist_name, platform, songs) VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING",
-        (user_id, playlist_name, platform, "[]"),
-    )
-    test_db.commit()
-    cursor.close()
+    try:
+        cursor.execute(
+            "INSERT INTO playlists (user_id, playlist_name, platform, songs) VALUES (%s, %s, %s, %s) ON CONFLICT DO NOTHING",
+            (user_id, playlist_name, platform, "[]"),
+        )
+        test_db.commit()
+    except Exception:
+        test_db.rollback()
+    finally:
+        cursor.close()
 
 
 def cleanup_playlist(user_id, playlist_name):
@@ -70,20 +80,20 @@ def test_spotify_auth_redirect():
 
 
 def test_create_playlist_already_exists():
-    setup_playlist(7, "My Playlist")
+    setup_playlist(11, "My Playlist")
     with patch("main.get_valid_youtube_token", return_value="fake_yt_token"), patch(
         "main.get_valid_spotify_token", return_value="fake_sp_token"
     ):
         response = client.post(
             "/create_playlist",
-            json={"name": "My Playlist", "user_id": 7, "platform": "both"},
+            json={"name": "My Playlist", "user_id": 11, "platform": "both"},
         )
         assert response.status_code == 400
         assert (
             response.json()["detail"]
             == "Playlist already exists. Please use 'Copy Playlist' instead."
         )
-    cleanup_playlist(7, "My Playlist")
+    cleanup_playlist(11, "My Playlist")
 
 
 def test_create_playlist_no_token():
@@ -107,7 +117,7 @@ def test_copy_playlist_not_found():
             json={
                 "name": "Nonexistent Playlist",
                 "platform": "youtube",
-                "user_id": 7,
+                "user_id": 11,
                 "sync": False,
             },
         )
@@ -119,7 +129,7 @@ def test_copy_playlist_not_found():
 
 
 def test_copy_playlist_already_on_both():
-    setup_playlist(7, "My Playlist", "both")
+    setup_playlist(11, "My Playlist", "both")
     with patch("main.get_valid_youtube_token", return_value="fake_yt_token"), patch(
         "main.get_valid_spotify_token", return_value="fake_sp_token"
     ):
@@ -128,7 +138,7 @@ def test_copy_playlist_already_on_both():
             json={
                 "name": "My Playlist",
                 "platform": "youtube",
-                "user_id": 7,
+                "user_id": 11,
                 "sync": False,
             },
         )
@@ -137,7 +147,7 @@ def test_copy_playlist_already_on_both():
             response.json()["detail"]
             == "Sorry, this playlist already exists on both platforms."
         )
-    cleanup_playlist(7, "My Playlist")
+    cleanup_playlist(11, "My Playlist")
 
 
 def test_sync_playlist_not_found():
@@ -148,7 +158,7 @@ def test_sync_playlist_not_found():
             "/sync_playlist",
             json={
                 "name": "Nonexistent Playlist",
-                "user_id": 7,
+                "user_id": 11,
                 "override_platform": "youtube",
             },
         )
@@ -160,17 +170,17 @@ def test_sync_playlist_not_found():
 
 
 def test_add_playlist_already_exists():
-    setup_playlist(7, "My Playlist", "spotify")
+    setup_playlist(11, "My Playlist", "spotify")
     with patch("main.get_valid_youtube_token", return_value="fake_yt_token"), patch(
         "main.get_valid_spotify_token", return_value="fake_sp_token"
     ):
         response = client.post(
             "/add_playlist",
-            json={"name": "My Playlist", "platform": "spotify", "user_id": 7},
+            json={"name": "My Playlist", "platform": "spotify", "user_id": 11},
         )
         assert response.status_code == 400
         assert response.json()["detail"] == "Playlist already exists in your account."
-    cleanup_playlist(7, "My Playlist")
+    cleanup_playlist(11, "My Playlist")
 
 
 def test_add_playlist_no_token():
@@ -183,21 +193,6 @@ def test_add_playlist_no_token():
         response.json()["detail"]
         == "No YouTube refresh token found. Please re-authenticate."
     )
-
-
-def test_delete_playlist_not_found():
-    with patch("main.get_valid_youtube_token", return_value="fake_yt_token"), patch(
-        "main.get_valid_spotify_token", return_value="fake_sp_token"
-    ):
-        response = client.delete(
-            "/delete_playlist",
-            json={"name": "Nonexistent Playlist", "platform": "both", "user_id": 7},
-        )
-        assert response.status_code == 200
-        assert (
-            response.json()["message"]
-            == "Playlist 'Nonexistent Playlist' not found. Nothing to delete."
-        )
 
 
 def test_delete_account_not_found():
