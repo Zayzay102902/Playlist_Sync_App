@@ -47,6 +47,88 @@ class Sync_Playlist_Input(BaseModel):
     override_platform: Platform
 
 
+class Delete_Playlist_Input(BaseModel):
+    name: constr(min_length=1)  # type: ignore
+    platform: Platform
+    user_id: int
+
+
+class Add_Playlist_Input(BaseModel):
+    name: constr(min_length=1)  # type: ignore
+    platform: Platform
+    user_id: int
+
+
+def check_youtube_playlist_exists(name: str, yt_access_token: str):
+    response = requests.get(
+        "https://www.googleapis.com/youtube/v3/playlists?part=snippet&mine=true",
+        headers={"Authorization": f"Bearer {yt_access_token}"},
+    )
+    names = [p["snippet"]["title"] for p in response.json().get("items", [])]
+    return name in names
+
+
+def check_spotify_playlist_exists(name: str, sp_access_token: str):
+    response = requests.get(
+        "https://api.spotify.com/v1/me/playlists",
+        headers={"Authorization": f"Bearer {sp_access_token}"},
+    )
+    names = [p["name"] for p in response.json().get("items", [])]
+    return name in names
+
+
+def get_youtube_playlist_id(name: str, yt_access_token: str):
+    response = requests.get(
+        "https://www.googleapis.com/youtube/v3/playlists?part=snippet&mine=true",
+        headers={"Authorization": f"Bearer {yt_access_token}"},
+    )
+    for p in response.json().get("items", []):
+        if p["snippet"]["title"] == name:
+            return p["id"]
+    return None
+
+
+def get_spotify_playlist_id(name: str, sp_access_token: str):
+    response = requests.get(
+        "https://api.spotify.com/v1/me/playlists",
+        headers={"Authorization": f"Bearer {sp_access_token}"},
+    )
+    for p in response.json().get("items", []):
+        if p["name"] == name:
+            return p["id"]
+    return None
+
+
+def get_youtube_songs(yt_id: str, yt_access_token: str):
+    response = requests.get(
+        f"https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId={yt_id}",
+        headers={"Authorization": f"Bearer {yt_access_token}"},
+    )
+    songs = []
+    for item in response.json().get("items", []):
+        parsed = parse_youtube_title(
+            item["snippet"]["title"], item["snippet"]["videoOwnerChannelTitle"]
+        )
+        songs.append(parsed)
+    return songs
+
+
+def get_spotify_songs(sp_id: str, sp_access_token: str):
+    response = requests.get(
+        f"https://api.spotify.com/v1/playlists/{sp_id}/tracks",
+        headers={"Authorization": f"Bearer {sp_access_token}"},
+    )
+    songs = []
+    for item in response.json().get("items", []):
+        songs.append(
+            {
+                "title": item["track"]["name"],
+                "artist": item["track"]["artists"][0]["name"],
+            }
+        )
+    return songs
+
+
 def get_valid_youtube_token(user_id: int):
     open_to_db = db_url.cursor()
     open_to_db.execute(
@@ -143,20 +225,27 @@ def get_valid_spotify_token(user_id: int) -> str:
     open_to_db.close()
     return access_token
 
+
 def parse_youtube_title(title: str, channel_title: str):
-    
+
     if channel_title.endswith("- Topic"):
         artist = channel_title.replace("- Topic", "").strip()
         return {"title": title.strip(), "artist": artist}
 
-    title = re.sub(r'\(.*?\)|\[.*?\]', '', title).strip()
+    title = re.sub(r"\(.*?\)|\[.*?\]", "", title).strip()
 
     if " - " in title:
         parts = title.split(" - ", 1)
 
-        if channel_title.lower() in parts[0].lower() or parts[0].lower() in channel_title.lower():
+        if (
+            channel_title.lower() in parts[0].lower()
+            or parts[0].lower() in channel_title.lower()
+        ):
             return {"title": parts[1].strip(), "artist": parts[0].strip()}
-        elif channel_title.lower() in parts[1].lower() or parts[1].lower() in channel_title.lower():
+        elif (
+            channel_title.lower() in parts[1].lower()
+            or parts[1].lower() in channel_title.lower()
+        ):
             return {"title": parts[0].strip(), "artist": parts[1].strip()}
         else:
             return {"title": parts[1].strip(), "artist": parts[0].strip()}
@@ -184,11 +273,9 @@ def create_user(user: User_Input):
     try:
         open_to_db.execute(
             "INSERT INTO users (username, password) VALUES (%s, %s)",
-            (user.username, hashed_password)
+            (user.username, hashed_password.decode("utf-8")),
         )
-        open_to_db.execute(
-            "SELECT id FROM users WHERE username = %s", (user.username,)
-        )
+        open_to_db.execute("SELECT id FROM users WHERE username = %s", (user.username,))
         user_r = open_to_db.fetchone()
         user_id = user_r[0]
         open_to_db.execute("INSERT INTO playlists (user_id) VALUES (%s)", (user_id,))
@@ -249,52 +336,155 @@ def create_playlist(data: Playlist_Input):
             status_code=400,
             detail="Playlist already exists. Please use 'Copy Playlist' instead.",
         )
+
     yt_access_token = get_valid_youtube_token(data.user_id)
     sp_access_token = get_valid_spotify_token(data.user_id)
 
-    response = requests.post(
-        "https://www.googleapis.com/youtube/v3/playlists?part=snippet,status",
-        headers={"Authorization": f"Bearer {yt_access_token}", "Content-Type": "application/json"},
-        json={"snippet": {"title": data.name}, "status": {"privacyStatus": "private"}},
-    )
-    y_j_data = response.json()
-    response = requests.post(
-        "https://api.spotify.com/v1/me/playlists",
-        headers={
-            "Authorization": f"Bearer {sp_access_token}",
-            "Content-Type": "application/json",
-        },
-        json={"name": data.name, "public": False, "collaborative": True},
-    )
-    sp_data = response.json()
+    if data.platform == Platform.YOUTUBE:
+        if check_youtube_playlist_exists(data.name, yt_access_token):
+            open_to_db.close()
+            raise HTTPException(
+                status_code=400, detail="Playlist already exists on YouTube."
+            )
 
-    yt_playlist_id = y_j_data["id"]
-    sp_playlist_id = sp_data["id"]
-
-    try:
-        open_to_db.execute(
-            """UPDATE playlists 
-               SET playlist_name = %s, platform = %s, songs = %s, youtube_playlist_id = %s, spotify_playlist_id = %s
-               WHERE user_id = %s AND playlist_name IS NULL""",
-            (
-                data.name,
-                Platform.BOTH,
-                json.dumps([]),
-                yt_playlist_id,
-                sp_playlist_id,
-                data.user_id,
-            ),
+        response = requests.post(
+            "https://www.googleapis.com/youtube/v3/playlists?part=snippet,status",
+            headers={
+                "Authorization": f"Bearer {yt_access_token}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "snippet": {"title": data.name},
+                "status": {"privacyStatus": "private"},
+            },
         )
-        db_url.commit()
-    except Exception as e:
-        db_url.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        open_to_db.close()
+        yt_playlist_id = response.json()["id"]
 
-    return {
-        "message": f"Playlists created and synced successfully for user {data.user_id}."
-    }
+        try:
+            open_to_db.execute(
+                """UPDATE playlists 
+                   SET playlist_name = %s, platform = %s, songs = %s, youtube_playlist_id = %s
+                   WHERE user_id = %s AND playlist_name IS NULL""",
+                (
+                    data.name,
+                    Platform.YOUTUBE,
+                    json.dumps([]),
+                    yt_playlist_id,
+                    data.user_id,
+                ),
+            )
+            db_url.commit()
+        except Exception as e:
+            db_url.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            open_to_db.close()
+
+        return {
+            "message": f"YouTube playlist '{data.name}' created successfully for user {data.user_id}."
+        }
+
+    elif data.platform == Platform.SPOTIFY:
+        if check_spotify_playlist_exists(data.name, sp_access_token):
+            open_to_db.close()
+            raise HTTPException(
+                status_code=400, detail="Playlist already exists on Spotify."
+            )
+
+        response = requests.post(
+            "https://api.spotify.com/v1/me/playlists",
+            headers={
+                "Authorization": f"Bearer {sp_access_token}",
+                "Content-Type": "application/json",
+            },
+            json={"name": data.name, "public": False, "collaborative": False},
+        )
+        sp_playlist_id = response.json()["id"]
+
+        try:
+            open_to_db.execute(
+                """UPDATE playlists 
+                   SET playlist_name = %s, platform = %s, songs = %s, spotify_playlist_id = %s
+                   WHERE user_id = %s AND playlist_name IS NULL""",
+                (
+                    data.name,
+                    Platform.SPOTIFY,
+                    json.dumps([]),
+                    sp_playlist_id,
+                    data.user_id,
+                ),
+            )
+            db_url.commit()
+        except Exception as e:
+            db_url.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            open_to_db.close()
+
+        return {
+            "message": f"Spotify playlist '{data.name}' created successfully for user {data.user_id}."
+        }
+
+    else:
+        if check_youtube_playlist_exists(data.name, yt_access_token):
+            open_to_db.close()
+            raise HTTPException(
+                status_code=400, detail="Playlist already exists on YouTube."
+            )
+
+        if check_spotify_playlist_exists(data.name, sp_access_token):
+            open_to_db.close()
+            raise HTTPException(
+                status_code=400, detail="Playlist already exists on Spotify."
+            )
+
+        yt_response = requests.post(
+            "https://www.googleapis.com/youtube/v3/playlists?part=snippet,status",
+            headers={
+                "Authorization": f"Bearer {yt_access_token}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "snippet": {"title": data.name},
+                "status": {"privacyStatus": "private"},
+            },
+        )
+        yt_playlist_id = yt_response.json()["id"]
+
+        sp_response = requests.post(
+            "https://api.spotify.com/v1/me/playlists",
+            headers={
+                "Authorization": f"Bearer {sp_access_token}",
+                "Content-Type": "application/json",
+            },
+            json={"name": data.name, "public": False, "collaborative": False},
+        )
+        sp_playlist_id = sp_response.json()["id"]
+
+        try:
+            open_to_db.execute(
+                """UPDATE playlists 
+                   SET playlist_name = %s, platform = %s, songs = %s, youtube_playlist_id = %s, spotify_playlist_id = %s
+                   WHERE user_id = %s AND playlist_name IS NULL""",
+                (
+                    data.name,
+                    Platform.BOTH,
+                    json.dumps([]),
+                    yt_playlist_id,
+                    sp_playlist_id,
+                    data.user_id,
+                ),
+            )
+            db_url.commit()
+        except Exception as e:
+            db_url.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            open_to_db.close()
+
+        return {
+            "message": f"Playlists created and synced successfully for user {data.user_id}."
+        }
 
 
 @app.post("/copy_playlist")
@@ -311,7 +501,7 @@ def copy_playlist(data: Copy_Playlist_Input):
         open_to_db.close()
         raise HTTPException(
             status_code=404,
-            detail="Playlist does not exist on this platform. Try again.",
+            detail="Playlist not found. Please add it first using /add_playlist.",
         )
 
     pl_id, current_platform, songs, yt_id, sp_id = playlist_info
@@ -338,29 +528,18 @@ def copy_playlist(data: Copy_Playlist_Input):
     sp_access_token = get_valid_spotify_token(data.user_id)
 
     if target_platform == Platform.SPOTIFY:
-        yt_songs_response = requests.get(
-            f"https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId={yt_id}",
-            headers={"Authorization": f"Bearer {yt_access_token}", "Content-Type": "application/json"},
-        )
-        yT_songs = yt_songs_response.json().get("items", [])
-
-        parsed_songs = []
-        for item in yT_songs:
-            parsed_songs.append(parse_youtube_title(
-                item["snippet"]["title"],
-                item["snippet"]["videoOwnerChannelTitle"]
-            ))
+        songs = get_youtube_songs(yt_id, yt_access_token)
 
         track_uris = []
-        for song in parsed_songs:
+        for song in songs:
             search_response = requests.get(
                 "https://api.spotify.com/v1/search",
                 headers={"Authorization": f"Bearer {sp_access_token}"},
                 params={
                     "q": f"track:{song['title']} artist:{song['artist']}",
                     "type": "track",
-                    "limit": 1
-                }
+                    "limit": 1,
+                },
             )
             search_data = search_response.json()
             if search_data["tracks"]["items"]:
@@ -368,38 +547,41 @@ def copy_playlist(data: Copy_Playlist_Input):
 
         sp_response = requests.post(
             "https://api.spotify.com/v1/me/playlists",
-            headers={"Authorization": f"Bearer {sp_access_token}", "Content-Type": "application/json"},
-            json={"name": data.name, "public": False, "collaborative": True},
+            headers={
+                "Authorization": f"Bearer {sp_access_token}",
+                "Content-Type": "application/json",
+            },
+            json={"name": data.name, "public": False, "collaborative": False},
         )
         new_platform_id = sp_response.json()["id"]
 
         if track_uris:
             requests.post(
                 f"https://api.spotify.com/v1/playlists/{new_platform_id}/tracks",
-                headers={"Authorization": f"Bearer {sp_access_token}", "Content-Type": "application/json"},
-                json={"uris": track_uris}
+                headers={
+                    "Authorization": f"Bearer {sp_access_token}",
+                    "Content-Type": "application/json",
+                },
+                json={"uris": track_uris},
             )
 
     else:
-        sp_songs_response = requests.get(
-            f"https://api.spotify.com/v1/playlists/{sp_id}/tracks",
-            headers={"Authorization": f"Bearer {sp_access_token}", "Content-Type": "application/json"},
-        )
-        sp_items = sp_songs_response.json().get("items", [])
-
-        parsed_songs = [
-            {"title": item["track"]["name"], "artist": item["track"]["artists"][0]["name"]}
-            for item in sp_items
-        ]
+        songs = get_spotify_songs(sp_id, sp_access_token)
 
         yt_response = requests.post(
             "https://www.googleapis.com/youtube/v3/playlists?part=snippet,status",
-            headers={"Authorization": f"Bearer {yt_access_token}", "Content-Type": "application/json"},
-            json={"snippet": {"title": data.name}, "status": {"privacyStatus": "private"}},
+            headers={
+                "Authorization": f"Bearer {yt_access_token}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "snippet": {"title": data.name},
+                "status": {"privacyStatus": "private"},
+            },
         )
         new_platform_id = yt_response.json()["id"]
 
-        for song in parsed_songs:
+        for song in songs:
             search_response = requests.get(
                 "https://www.googleapis.com/youtube/v3/search",
                 headers={"Authorization": f"Bearer {yt_access_token}"},
@@ -408,21 +590,27 @@ def copy_playlist(data: Copy_Playlist_Input):
                     "q": f"{song['title']} {song['artist']}",
                     "type": "video",
                     "videoCategoryId": "10",
-                    "maxResults": 1
-                }
+                    "maxResults": 1,
+                },
             )
             search_data = search_response.json()
             if search_data.get("items"):
                 video_id = search_data["items"][0]["id"]["videoId"]
                 requests.post(
                     "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet",
-                    headers={"Authorization": f"Bearer {yt_access_token}", "Content-Type": "application/json"},
+                    headers={
+                        "Authorization": f"Bearer {yt_access_token}",
+                        "Content-Type": "application/json",
+                    },
                     json={
                         "snippet": {
                             "playlistId": new_platform_id,
-                            "resourceId": {"kind": "youtube#video", "videoId": video_id}
+                            "resourceId": {
+                                "kind": "youtube#video",
+                                "videoId": video_id,
+                            },
                         }
-                    }
+                    },
                 )
 
     new_platform = Platform.BOTH if data.sync else target_platform
@@ -430,13 +618,13 @@ def copy_playlist(data: Copy_Playlist_Input):
     try:
         if data.platform == Platform.YOUTUBE:
             open_to_db.execute(
-                "UPDATE playlists SET platform = %s, spotify_playlist_id = %s WHERE id = %s",
-                (new_platform, new_platform_id, pl_id)
+                "UPDATE playlists SET platform = %s, spotify_playlist_id = %s, songs = %s WHERE id = %s",
+                (new_platform, new_platform_id, json.dumps(songs), pl_id),
             )
         else:
             open_to_db.execute(
-                "UPDATE playlists SET platform = %s, youtube_playlist_id = %s WHERE id = %s",
-                (new_platform, new_platform_id, pl_id)
+                "UPDATE playlists SET platform = %s, youtube_playlist_id = %s, songs = %s WHERE id = %s",
+                (new_platform, new_platform_id, json.dumps(songs), pl_id),
             )
         db_url.commit()
     except Exception as e:
@@ -449,6 +637,7 @@ def copy_playlist(data: Copy_Playlist_Input):
         "message": f"Playlist '{data.name}' copied from {data.platform} to {target_platform}.",
         "synced": data.sync,
     }
+
 
 @app.post("/sync_playlist")
 def sync_playlist(data: Sync_Playlist_Input):
@@ -479,30 +668,18 @@ def sync_playlist(data: Sync_Playlist_Input):
     open_to_db.close()
 
     if data.override_platform == Platform.YOUTUBE:
-
-        yt_songs_response = requests.get(
-            f"https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId={yt_id}",
-            headers={"Authorization": f"Bearer {yt_access_token}", "Content-Type": "application/json"},
-        )
-        yt_items = yt_songs_response.json().get("items", [])
-
-        parsed_songs = []
-        for item in yt_items:
-            parsed_songs.append(parse_youtube_title(
-                item["snippet"]["title"],
-                item["snippet"]["videoOwnerChannelTitle"]
-            ))
+        songs = get_youtube_songs(yt_id, yt_access_token)
 
         track_uris = []
-        for song in parsed_songs:
+        for song in songs:
             search_response = requests.get(
                 "https://api.spotify.com/v1/search",
                 headers={"Authorization": f"Bearer {sp_access_token}"},
                 params={
                     "q": f"track:{song['title']} artist:{song['artist']}",
                     "type": "track",
-                    "limit": 1
-                }
+                    "limit": 1,
+                },
             )
             search_data = search_response.json()
             if search_data["tracks"]["items"]:
@@ -511,21 +688,15 @@ def sync_playlist(data: Sync_Playlist_Input):
         if track_uris:
             requests.put(
                 f"https://api.spotify.com/v1/playlists/{sp_id}/tracks",
-                headers={"Authorization": f"Bearer {sp_access_token}", "Content-Type": "application/json"},
-                json={"uris": track_uris}
+                headers={
+                    "Authorization": f"Bearer {sp_access_token}",
+                    "Content-Type": "application/json",
+                },
+                json={"uris": track_uris},
             )
+
     else:
-
-        sp_songs_response = requests.get(
-            f"https://api.spotify.com/v1/playlists/{sp_id}/tracks",
-            headers={"Authorization": f"Bearer {sp_access_token}", "Content-Type": "application/json"},
-        )
-        sp_items = sp_songs_response.json().get("items", [])
-
-        parsed_songs = [
-            {"title": item["track"]["name"], "artist": item["track"]["artists"][0]["name"]}
-            for item in sp_items
-        ]
+        songs = get_spotify_songs(sp_id, sp_access_token)
 
         yt_items_response = requests.get(
             f"https://www.googleapis.com/youtube/v3/playlistItems?part=id&playlistId={yt_id}",
@@ -537,7 +708,7 @@ def sync_playlist(data: Sync_Playlist_Input):
                 headers={"Authorization": f"Bearer {yt_access_token}"},
             )
 
-        for song in parsed_songs:
+        for song in songs:
             search_response = requests.get(
                 "https://www.googleapis.com/youtube/v3/search",
                 headers={"Authorization": f"Bearer {yt_access_token}"},
@@ -546,24 +717,182 @@ def sync_playlist(data: Sync_Playlist_Input):
                     "q": f"{song['title']} {song['artist']}",
                     "type": "video",
                     "videoCategoryId": "10",
-                    "maxResults": 1
-                }
+                    "maxResults": 1,
+                },
             )
             search_data = search_response.json()
             if search_data.get("items"):
                 video_id = search_data["items"][0]["id"]["videoId"]
                 requests.post(
                     "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet",
-                    headers={"Authorization": f"Bearer {yt_access_token}", "Content-Type": "application/json"},
+                    headers={
+                        "Authorization": f"Bearer {yt_access_token}",
+                        "Content-Type": "application/json",
+                    },
                     json={
                         "snippet": {
                             "playlistId": yt_id,
-                            "resourceId": {"kind": "youtube#video", "videoId": video_id}
+                            "resourceId": {
+                                "kind": "youtube#video",
+                                "videoId": video_id,
+                            },
                         }
-                    }
+                    },
                 )
 
-    return {"message": f"Playlist '{data.name}' synced successfully using {data.override_platform} as source of truth."}
+    open_to_db = db_url.cursor()
+    try:
+        open_to_db.execute(
+            "UPDATE playlists SET songs = %s WHERE id = %s",
+            (json.dumps(songs), pl_id),
+        )
+        db_url.commit()
+    except Exception as e:
+        db_url.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        open_to_db.close()
+
+    return {
+        "message": f"Playlist '{data.name}' synced successfully using {data.override_platform} as source of truth."
+    }
+
+
+@app.post("/add_playlist")
+def add_playlist(data: Add_Playlist_Input):
+    open_to_db = db_url.cursor()
+
+    open_to_db.execute(
+        "SELECT id FROM playlists WHERE playlist_name = %s AND user_id = %s",
+        (data.name, data.user_id),
+    )
+    if open_to_db.fetchone():
+        open_to_db.close()
+        raise HTTPException(
+            status_code=400, detail="Playlist already exists in your account."
+        )
+
+    yt_access_token = get_valid_youtube_token(data.user_id)
+    sp_access_token = get_valid_spotify_token(data.user_id)
+
+    if data.platform == Platform.YOUTUBE:
+        playlist_id = get_youtube_playlist_id(data.name, yt_access_token)
+        if not playlist_id:
+            open_to_db.close()
+            raise HTTPException(
+                status_code=404, detail="Playlist not found on YouTube."
+            )
+
+        songs = get_youtube_songs(playlist_id, yt_access_token)
+
+        try:
+            open_to_db.execute(
+                """INSERT INTO playlists (user_id, playlist_name, platform, songs, youtube_playlist_id)
+                   VALUES (%s, %s, %s, %s, %s)""",
+                (
+                    data.user_id,
+                    data.name,
+                    Platform.YOUTUBE,
+                    json.dumps(songs),
+                    playlist_id,
+                ),
+            )
+            db_url.commit()
+        except Exception as e:
+            db_url.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            open_to_db.close()
+
+    else:
+        playlist_id = get_spotify_playlist_id(data.name, sp_access_token)
+        if not playlist_id:
+            open_to_db.close()
+            raise HTTPException(
+                status_code=404, detail="Playlist not found on Spotify."
+            )
+
+        songs = get_spotify_songs(playlist_id, sp_access_token)
+
+        try:
+            open_to_db.execute(
+                """INSERT INTO playlists (user_id, playlist_name, platform, songs, spotify_playlist_id)
+                   VALUES (%s, %s, %s, %s, %s)""",
+                (
+                    data.user_id,
+                    data.name,
+                    Platform.SPOTIFY,
+                    json.dumps(songs),
+                    playlist_id,
+                ),
+            )
+            db_url.commit()
+        except Exception as e:
+            db_url.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            open_to_db.close()
+
+    return {
+        "message": f"Playlist '{data.name}' added successfully from {data.platform}."
+    }
+
+
+@app.delete("/delete_playlist")
+def delete_playlist(data: Delete_Playlist_Input):
+    open_to_db = db_url.cursor()
+
+    if data.platform == Platform.BOTH:
+        open_to_db.execute(
+            "SELECT id, platform, youtube_playlist_id, spotify_playlist_id FROM playlists WHERE playlist_name = %s AND user_id = %s",
+            (data.name, data.user_id),
+        )
+    elif data.platform == Platform.YOUTUBE:
+        open_to_db.execute(
+            "SELECT id, platform, youtube_playlist_id, spotify_playlist_id FROM playlists WHERE playlist_name = %s AND user_id = %s AND platform = %s",
+            (data.name, data.user_id, Platform.YOUTUBE),
+        )
+    else:
+        open_to_db.execute(
+            "SELECT id, platform, youtube_playlist_id, spotify_playlist_id FROM playlists WHERE playlist_name = %s AND user_id = %s AND platform = %s",
+            (data.name, data.user_id, Platform.SPOTIFY),
+        )
+
+    playlist_info = open_to_db.fetchone()
+
+    if not playlist_info:
+        open_to_db.close()
+        return {"message": f"Playlist '{data.name}' not found. Nothing to delete."}
+
+    pl_id, current_platform, yt_id, sp_id = playlist_info
+
+    yt_access_token = get_valid_youtube_token(data.user_id)
+    sp_access_token = get_valid_spotify_token(data.user_id)
+
+    if current_platform in (Platform.YOUTUBE, Platform.BOTH) and yt_id:
+        requests.delete(
+            f"https://www.googleapis.com/youtube/v3/playlists?id={yt_id}",
+            headers={"Authorization": f"Bearer {yt_access_token}"},
+        )
+
+    if current_platform in (Platform.SPOTIFY, Platform.BOTH) and sp_id:
+        requests.delete(
+            f"https://api.spotify.com/v1/playlists/{sp_id}/followers",
+            headers={"Authorization": f"Bearer {sp_access_token}"},
+        )
+
+    try:
+        open_to_db.execute("DELETE FROM playlists WHERE id = %s", (pl_id,))
+        db_url.commit()
+    except Exception as e:
+        db_url.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        open_to_db.close()
+
+    return {
+        "message": f"Playlist '{data.name}' deleted successfully from {current_platform}."
+    }
 
 
 @app.delete("/delete_account")
@@ -618,7 +947,7 @@ def get_google_tokens(state: str, code: str):
     state_json = base64.urlsafe_b64decode(state.encode()).decode()
     state_data = json.loads(state_json)
     user_id = state_data.get("user_id")
-    user_id = int(user_id) 
+    user_id = int(user_id)
     if not user_id:
         raise HTTPException(
             status_code=400, detail="Missing state parameter: Missing User ID!"
@@ -672,7 +1001,7 @@ def get_google_tokens(state: str, code: str):
 @app.get("/spotify_auth")
 def spotify_login(user_id: int):
     state_json = json.dumps({"user_id": user_id})
-    user_id = int(user_id) 
+    user_id = int(user_id)
     state = base64.urlsafe_b64encode(state_json.encode()).decode()
     what_I_want = "playlist-read-private playlist-modify-private playlist-modify-public playlist-read-collaborative"
     auth_url = "https://accounts.spotify.com/authorize?" + "&".join(
@@ -714,7 +1043,6 @@ def get_spotify_token(state: str, code: str):
         },
     )
     token_data = response.json()
-    print(token_data) 
     access_token = token_data["access_token"]
     expires_in = datetime.now() + timedelta(seconds=token_data["expires_in"])
     refresh_token = token_data["refresh_token"]
