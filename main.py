@@ -3,7 +3,8 @@ import bcrypt
 import requests
 from enum import Enum
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, constr
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
@@ -12,6 +13,9 @@ from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request as GoogleRequest
 
 app = FastAPI()
+
+# Serve frontend static files (styles.css, app.js, etc.)
+app.mount("/static", StaticFiles(directory="."), name="static")
 
 load_dotenv()
 db_url = psycopg2.connect(os.getenv("DATABASE_URL"))
@@ -286,7 +290,7 @@ def create_user(user: User_Input):
     finally:
         open_to_db.close()
 
-    return RedirectResponse(url=f"/google_auth?user_id={user_id}", status_code=303)
+    return {"redirect_url": f"/google_auth?user_id={user_id}"}
 
 
 @app.post("/login")
@@ -314,10 +318,10 @@ def login(user: User_Input):
     now = datetime.now()
 
     if not yt_expiry or yt_expiry < now:
-        return RedirectResponse(url=f"/google_auth?user_id={user_id}", status_code=303)
+        return {"redirect_url": f"/google_auth?user_id={user_id}"}
 
     if not sp_expiry or sp_expiry < now:
-        return RedirectResponse(url=f"/spotify_auth?user_id={user_id}", status_code=303)
+        return {"redirect_url": f"/spotify_auth?user_id={user_id}"}
 
     return {"message": "Login successful.", "user_id": user_id}
 
@@ -995,7 +999,8 @@ def get_google_tokens(state: str, code: str):
     if not sp_token or not sp_token[0]:
         return RedirectResponse(url=f"/spotify_auth?user_id={user_id}", status_code=303)
 
-    return {"message": "Google re-authentication successful.", "user_id": user_id}
+    app_url = os.getenv("APP_URL", "http://127.0.0.1:8000")
+    return RedirectResponse(url=f"{app_url}/?user_id={user_id}", status_code=303)
 
 
 @app.get("/spotify_auth")
@@ -1060,4 +1065,32 @@ def get_spotify_token(state: str, code: str):
     finally:
         open_to_db.close()
 
-    return {"message": "Spotify re-authentication successful.", "user_id": user_id}
+    app_url = os.getenv("APP_URL", "http://127.0.0.1:8000")
+    return RedirectResponse(url=f"{app_url}/?user_id={user_id}", status_code=303)
+
+
+@app.get("/playlists/{user_id}")
+def get_playlists(user_id: int):
+    open_to_db = db_url.cursor()
+    open_to_db.execute(
+        "SELECT playlist_name, platform, songs, youtube_playlist_id, spotify_playlist_id, created_at FROM playlists WHERE user_id = %s AND playlist_name IS NOT NULL",
+        (user_id,)
+    )
+    playlists = open_to_db.fetchall()
+    open_to_db.close()
+    return {"playlists": [
+        {
+            "name": p[0],
+            "platform": p[1],
+            "songs": p[2],
+            "youtube_playlist_id": p[3],
+            "spotify_playlist_id": p[4],
+            "created_at": str(p[5])
+        }
+        for p in playlists
+    ]}
+
+
+@app.get("/")
+def serve_frontend():
+    return FileResponse("index.html")

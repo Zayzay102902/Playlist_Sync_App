@@ -3,253 +3,158 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Connect to the Music</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>🎶 Connect to the Music 🎶</title>
+  <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
 
-  <!-- ======================================================
-       PAGE 1: LOGIN
-  ====================================================== -->
-  <div id="page-login" class="page page-auth">
-    <div class="card">
-      <h1 id="app-title">🎶 Connect to the Music 🎶</h1>
-
-      <div class="form-group">
-        <label for="login-username">Username</label>
-        <input type="text" id="login-username" placeholder="Enter your username" autocomplete="username" />
-      </div>
-
-      <div class="form-group">
-        <label for="login-password">Password</label>
-        <input type="password" id="login-password" placeholder="Enter your password" autocomplete="current-password" />
-      </div>
-
-      <p id="login-error" class="error-msg" style="display: none;">Username or password incorrect</p>
-
-      <button id="btn-login" class="btn btn-primary btn-full">Login</button>
-
-      <a id="btn-go-to-create-account" class="link-subtle" role="button" tabindex="0">Create Account</a>
+  <!-- ===== LOGIN PAGE ===== -->
+  <div id="login-page" class="page">
+    <div class="auth-container">
+      <h1 class="app-title">🎶 Connect to the Music 🎶</h1>
+      <form id="login-form" class="auth-form" novalidate>
+        <div class="input-group">
+          <input type="text" id="login-username" class="input-field" placeholder="Username" autocomplete="username" />
+        </div>
+        <div class="input-group">
+          <input type="password" id="login-password" class="input-field" placeholder="Password" autocomplete="current-password" />
+        </div>
+        <div id="login-error" class="error-msg hidden"></div>
+        <button type="submit" class="btn btn-primary btn-full">Login</button>
+        <p class="auth-switch">Don't have an account? <a href="#" id="go-to-create" class="text-link">Create Account</a></p>
+      </form>
     </div>
   </div>
 
-
-  <!-- ======================================================
-       PAGE 2: CREATE ACCOUNT
-  ====================================================== -->
-  <div id="page-create-account" class="page page-auth" style="display: none;">
-    <div class="card">
-      <h1 id="create-account-title">🎶 Connect to the Music 🎶</h1>
-
-      <div class="form-group">
-        <label for="create-username">Username</label>
-        <input type="text" id="create-username" placeholder="Choose a username" autocomplete="username" />
-      </div>
-
-      <div class="form-group">
-        <label for="create-password">Password</label>
-        <input type="password" id="create-password" placeholder="Choose a password" autocomplete="new-password" />
-      </div>
-
-      <p id="create-account-error" class="error-msg" style="display: none;">Username already exists</p>
-
-      <button id="btn-verify" class="btn btn-primary btn-full">Verify</button>
+  <!-- ===== CREATE ACCOUNT PAGE ===== -->
+  <div id="create-account-page" class="page hidden">
+    <div class="auth-container">
+      <h1 class="app-title">🎶 Connect to the Music 🎶</h1>
+      <form id="create-form" class="auth-form" novalidate>
+        <div class="input-group">
+          <input type="text" id="create-username" class="input-field" placeholder="Username" autocomplete="username" />
+        </div>
+        <div class="input-group">
+          <input type="password" id="create-password" class="input-field" placeholder="Password" autocomplete="new-password" />
+        </div>
+        <div id="create-error" class="error-msg hidden"></div>
+        <button type="submit" class="btn btn-primary btn-full">Verify</button>
+        <p class="auth-switch"><a href="#" id="go-to-login" class="text-link back-link">← Back to Login</a></p>
+      </form>
     </div>
   </div>
 
-
-  <!-- ======================================================
-       PAGE 3: DASHBOARD
-  ====================================================== -->
-  <div id="page-dashboard" class="page" style="display: none;">
-
-    <!-- Navbar -->
-    <nav id="navbar">
-      <span id="navbar-title">Dashboard</span>
-      <div id="navbar-actions">
-        <button id="btn-open-create-playlist" class="btn btn-nav">Create Playlist</button>
-        <button id="btn-open-sync"             class="btn btn-nav">Sync</button>
-        <button id="btn-open-copy-playlist"    class="btn btn-nav">Copy Playlist</button>
-        <button id="btn-open-delete-account"   class="btn btn-nav btn-nav-danger">Delete Account</button>
-        <button id="btn-logout"                class="btn btn-nav btn-nav-logout">Logout</button>
+  <!-- ===== DASHBOARD PAGE ===== -->
+  <div id="dashboard-page" class="page hidden">
+    <nav class="navbar">
+      <span class="navbar-brand">Dashboard</span>
+      <div class="navbar-actions">
+        <button class="btn btn-sm" id="btn-create-playlist">Create Playlist</button>
+        <button class="btn btn-sm" id="btn-add-playlist">Add Playlist</button>
+        <button class="btn btn-sm" id="btn-copy-playlist">Copy Playlist</button>
+        <button class="btn btn-sm" id="btn-sync-playlist">Sync Playlist</button>
+        <button class="btn btn-sm" id="btn-delete-playlist">Delete Playlist</button>
+        <button class="btn btn-sm btn-danger" id="btn-delete-account">Delete Account</button>
       </div>
     </nav>
+    <main class="dashboard-main">
+      <div id="playlist-grid" class="playlist-grid"></div>
+    </main>
+  </div>
 
-    <!-- Playlist Grid -->
-    <div id="playlist-area">
-
-      <div class="playlist-card">
-        <div class="playlist-icon">🎵</div>
-        <div class="playlist-name">Summer Vibes</div>
-        <div class="playlist-date">March 28, 2026</div>
-      </div>
-
-      <div class="playlist-card">
-        <div class="playlist-icon">🎸</div>
-        <div class="playlist-name">Rock Classics</div>
-        <div class="playlist-date">March 20, 2026</div>
-      </div>
-
-      <div class="playlist-card">
-        <div class="playlist-icon">🎹</div>
-        <div class="playlist-name">Late Night Jazz</div>
-        <div class="playlist-date">March 14, 2026</div>
-      </div>
-
-      <div class="playlist-card">
-        <div class="playlist-icon">🥁</div>
-        <div class="playlist-name">Workout Beats</div>
-        <div class="playlist-date">March 10, 2026</div>
-      </div>
-
-      <div class="playlist-card">
-        <div class="playlist-icon">🎷</div>
-        <div class="playlist-name">Chill Sunday</div>
-        <div class="playlist-date">March 2, 2026</div>
-      </div>
-
+  <!-- ===== MODAL: CREATE PLAYLIST ===== -->
+  <div id="modal-create" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-create-title">
+    <div class="modal-card">
+      <button class="modal-close" aria-label="Close">&times;</button>
+      <h2 id="modal-create-title" class="modal-title">Create Playlist</h2>
+      <label class="field-label" for="cp-name">Playlist Name</label>
+      <input type="text" id="cp-name" class="input-field" placeholder="My Awesome Playlist" />
+      <label class="field-label" for="cp-platform">Platform</label>
+      <select id="cp-platform" class="select-field">
+        <option value="both" selected>Both</option>
+        <option value="youtube">YouTube</option>
+        <option value="spotify">Spotify</option>
+      </select>
+      <div class="modal-error hidden"></div>
+      <button class="btn btn-primary btn-full modal-action-btn" data-modal="modal-create">Create</button>
     </div>
   </div>
 
-
-  <!-- ======================================================
-       MODAL 1: CREATE PLAYLIST
-  ====================================================== -->
-  <div id="modal-create-playlist" class="modal-container" style="display: none;">
-    <div id="backdrop-create-playlist" class="modal-backdrop"></div>
-    <div id="modal-box-create-playlist" class="modal-box">
-
-      <button id="btn-close-create-playlist-x" class="btn-close-x" aria-label="Close">&#x2715;</button>
-      <h2 class="modal-title">Create Playlist</h2>
-
-      <div class="form-group">
-        <label for="input-create-playlist-name">Playlist Name</label>
-        <input type="text" id="input-create-playlist-name" placeholder="Enter a playlist name" />
-      </div>
-
-      <p id="create-playlist-error" class="error-msg" style="display: none;"></p>
-
-      <div class="modal-actions">
-        <button id="btn-cancel-create-playlist" class="btn btn-secondary">Cancel</button>
-        <button id="btn-submit-create-playlist" class="btn btn-primary">Create</button>
-      </div>
-
+  <!-- ===== MODAL: ADD PLAYLIST ===== -->
+  <div id="modal-add" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-add-title">
+    <div class="modal-card">
+      <button class="modal-close" aria-label="Close">&times;</button>
+      <h2 id="modal-add-title" class="modal-title">Add Existing Playlist</h2>
+      <label class="field-label" for="ap-name">Playlist Name</label>
+      <input type="text" id="ap-name" class="input-field" placeholder="My Playlist" />
+      <p class="field-note">Name must match exactly as it appears on the platform.</p>
+      <label class="field-label" for="ap-platform">Platform</label>
+      <select id="ap-platform" class="select-field">
+        <option value="youtube">YouTube</option>
+        <option value="spotify">Spotify</option>
+      </select>
+      <div class="modal-error hidden"></div>
+      <button class="btn btn-primary btn-full modal-action-btn" data-modal="modal-add">Add</button>
     </div>
   </div>
 
-
-  <!-- ======================================================
-       MODAL 2: SYNC PLAYLIST
-  ====================================================== -->
-  <div id="modal-sync" class="modal-container" style="display: none;">
-    <div id="backdrop-sync" class="modal-backdrop"></div>
-    <div id="modal-box-sync" class="modal-box">
-
-      <button id="btn-close-sync-x" class="btn-close-x" aria-label="Close">&#x2715;</button>
-      <h2 class="modal-title">Sync Playlist</h2>
-
-      <div class="form-group">
-        <label for="input-sync-playlist-name">Playlist Name</label>
-        <input type="text" id="input-sync-playlist-name" placeholder="Enter a playlist name" />
-      </div>
-
-      <div class="form-group">
-        <label for="select-sync-platform">Platform</label>
-        <select id="select-sync-platform">
-          <option value="spotify">Spotify</option>
-          <option value="youtube">YouTube</option>
-        </select>
-      </div>
-
-      <p id="sync-error" class="error-msg" style="display: none;"></p>
-
-      <div class="modal-actions">
-        <button id="btn-cancel-sync" class="btn btn-secondary">Cancel</button>
-        <button id="btn-submit-sync" class="btn btn-primary">Sync</button>
-      </div>
-
+  <!-- ===== MODAL: COPY PLAYLIST ===== -->
+  <div id="modal-copy" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-copy-title">
+    <div class="modal-card">
+      <button class="modal-close" aria-label="Close">&times;</button>
+      <h2 id="modal-copy-title" class="modal-title">Copy Playlist</h2>
+      <label class="field-label" for="cop-name">Playlist Name</label>
+      <input type="text" id="cop-name" class="input-field" placeholder="My Playlist" />
+      <p class="field-note">Name must be spelled exactly as it appears in the database.</p>
+      <label class="field-label" for="cop-platform">Current Platform</label>
+      <select id="cop-platform" class="select-field">
+        <option value="youtube">YouTube</option>
+        <option value="spotify">Spotify</option>
+      </select>
+      <label class="checkbox-label">
+        <input type="checkbox" id="cop-sync" class="checkbox-input" />
+        <span class="checkbox-text">Keep Synced?</span>
+      </label>
+      <div class="modal-error hidden"></div>
+      <button class="btn btn-primary btn-full modal-action-btn" data-modal="modal-copy">Copy</button>
     </div>
   </div>
 
-
-  <!-- ======================================================
-       MODAL 3: COPY PLAYLIST
-  ====================================================== -->
-  <div id="modal-copy-playlist" class="modal-container" style="display: none;">
-    <div id="backdrop-copy-playlist" class="modal-backdrop"></div>
-    <div id="modal-box-copy-playlist" class="modal-box">
-
-      <button id="btn-close-copy-playlist-x" class="btn-close-x" aria-label="Close">&#x2715;</button>
-      <h2 class="modal-title">Copy Playlist</h2>
-
-      <div class="form-group">
-        <label for="input-copy-playlist-name">Playlist Name</label>
-        <input type="text" id="input-copy-playlist-name" placeholder="Enter a playlist name" />
-      </div>
-
-      <div class="form-group">
-        <label for="select-copy-platform">Platform</label>
-        <select id="select-copy-platform">
-          <option value="spotify">Spotify</option>
-          <option value="youtube">YouTube</option>
-        </select>
-      </div>
-
-      <p id="copy-playlist-error" class="error-msg" style="display: none;"></p>
-
-      <div class="modal-actions">
-        <button id="btn-cancel-copy-playlist" class="btn btn-secondary">Cancel</button>
-        <button id="btn-submit-copy-playlist" class="btn btn-primary">Copy</button>
-      </div>
-
+  <!-- ===== MODAL: SYNC PLAYLIST ===== -->
+  <div id="modal-sync" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-sync-title">
+    <div class="modal-card">
+      <button class="modal-close" aria-label="Close">&times;</button>
+      <h2 id="modal-sync-title" class="modal-title">Sync Playlist</h2>
+      <label class="field-label" for="scp-name">Playlist Name</label>
+      <input type="text" id="scp-name" class="input-field" placeholder="My Playlist" />
+      <label class="field-label" for="scp-platform">Source of Truth Platform</label>
+      <select id="scp-platform" class="select-field">
+        <option value="youtube">YouTube</option>
+        <option value="spotify">Spotify</option>
+      </select>
+      <div class="modal-error hidden"></div>
+      <button class="btn btn-primary btn-full modal-action-btn" data-modal="modal-sync">Sync</button>
     </div>
   </div>
 
-
-  <!-- ======================================================
-       MODAL 4: DELETE ACCOUNT — STEP 1 (Password)
-  ====================================================== -->
-  <div id="modal-delete-account" class="modal-container" style="display: none;">
-    <div id="backdrop-delete-account" class="modal-backdrop"></div>
-    <div id="modal-box-delete-account" class="modal-box">
-
-      <button id="btn-close-delete-account-x" class="btn-close-x" aria-label="Close">&#x2715;</button>
-      <h2 class="modal-title">Delete Account</h2>
-
-      <div class="form-group">
-        <label for="input-delete-account-password">Confirm Password</label>
-        <input type="password" id="input-delete-account-password" placeholder="Enter your password" />
-      </div>
-
-      <p id="delete-account-error" class="error-msg" style="display: none;"></p>
-
-      <div class="modal-actions">
-        <button id="btn-cancel-delete-account"  class="btn btn-secondary">Cancel</button>
-        <button id="btn-submit-delete-account"  class="btn btn-danger">Delete</button>
-      </div>
-
+  <!-- ===== MODAL: DELETE PLAYLIST ===== -->
+  <div id="modal-delete" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-delete-title">
+    <div class="modal-card">
+      <button class="modal-close" aria-label="Close">&times;</button>
+      <h2 id="modal-delete-title" class="modal-title">Delete Playlist</h2>
+      <label class="field-label" for="dp-name">Playlist Name</label>
+      <input type="text" id="dp-name" class="input-field" placeholder="My Playlist" />
+      <label class="field-label" for="dp-platform">Platform</label>
+      <select id="dp-platform" class="select-field">
+        <option value="both">Both</option>
+        <option value="youtube">YouTube</option>
+        <option value="spotify">Spotify</option>
+      </select>
+      <div class="modal-error hidden"></div>
+      <button class="btn btn-danger btn-full modal-action-btn" data-modal="modal-delete">Delete</button>
     </div>
   </div>
 
-
-  <!-- ======================================================
-       MODAL 5: DELETE ACCOUNT — STEP 2 (Final Confirmation)
-  ====================================================== -->
-  <div id="modal-delete-confirm" class="modal-container" style="display: none;">
-    <div id="backdrop-delete-confirm" class="modal-backdrop"></div>
-    <div id="modal-box-delete-confirm" class="modal-box modal-box-confirm">
-
-      <h2 id="delete-confirm-title">Are you sure?</h2>
-      <p class="confirm-subtitle">This action cannot be undone. Your account and all playlists will be permanently deleted.</p>
-
-      <div class="modal-actions modal-actions-confirm">
-        <button id="btn-delete-confirm-no"  class="btn btn-secondary">No</button>
-        <button id="btn-delete-confirm-yes" class="btn btn-danger">Yes, Delete</button>
-      </div>
-
-    </div>
-  </div>
-
-
+  <script src="/static/app.js"></script>
 </body>
 </html>
