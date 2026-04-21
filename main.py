@@ -34,37 +34,37 @@ class User_Input(BaseModel):
 
 class Playlist_Input(BaseModel):
     name: constr(min_length=1)  # type: ignore
-    user_id: int
+    user_id: str
     platform: Platform
 
 
 class Copy_Playlist_Input(BaseModel):
     name: constr(min_length=1)  # type: ignore
     platform: Platform
-    user_id: int
+    user_id: str
     sync: bool = False
 
 
 class Sync_Playlist_Input(BaseModel):
     name: constr(min_length=1)  # type: ignore
-    user_id: int
+    user_id: str
     override_platform: Platform
 
 
 class Delete_Playlist_Input(BaseModel):
     name: constr(min_length=1)  # type: ignore
     platform: Platform
-    user_id: int
+    user_id: str
 
 
 class Add_Playlist_Input(BaseModel):
     name: constr(min_length=1)  # type: ignore
     platform: Platform
-    user_id: int
+    user_id: str
 
 
 class Logout_Input(BaseModel):
-    user_id: int
+    user_id: str
 
 
 def check_youtube_playlist_exists(name: str, yt_access_token: str):
@@ -138,7 +138,7 @@ def get_spotify_songs(sp_id: str, sp_access_token: str):
     return songs
 
 
-def get_valid_youtube_token(user_id: int):
+def get_valid_youtube_token(user_id: str):
     open_to_db = db_url.cursor()
     open_to_db.execute(
         "SELECT youtube_access_token, youtube_refresh_token, youtube_token_expiry FROM users WHERE id = %s",
@@ -185,7 +185,7 @@ def get_valid_youtube_token(user_id: int):
     return access_token
 
 
-def get_valid_spotify_token(user_id: int) -> str:
+def get_valid_spotify_token(user_id: str) -> str:
     open_to_db = db_url.cursor()
     open_to_db.execute(
         "SELECT spotify_access_token, spotify_refresh_token, spotify_token_expiry FROM users WHERE id = %s",
@@ -847,7 +847,7 @@ def add_playlist(data: Add_Playlist_Input):
 
 
 @app.delete("/delete_playlist")
-def delete_playlist(name: str, platform: Platform, user_id: int):
+def delete_playlist(name: str, platform: Platform, user_id: str):
     open_to_db = db_url.cursor()
 
     if platform == Platform.BOTH:
@@ -928,7 +928,7 @@ def logout(data: Logout_Input):
 
 
 @app.delete("/delete_account")
-def delete_account(user_id: int):
+def delete_account(user_id: str):
     open_to_db = db_url.cursor()
 
     open_to_db.execute("SELECT id FROM users WHERE id = %s", (user_id,))
@@ -949,7 +949,7 @@ def delete_account(user_id: int):
 
 
 @app.get("/google_auth")
-def google_login(user_id: int):
+def google_login(user_id: str):
     client_config = {
         "web": {
             "client_id": os.getenv("GOOGLE_CLIENT_ID"),
@@ -979,7 +979,6 @@ def get_google_tokens(state: str, code: str):
     state_json = base64.urlsafe_b64decode(state.encode()).decode()
     state_data = json.loads(state_json)
     user_id = state_data.get("user_id")
-    user_id = int(user_id)
     if not user_id:
         raise HTTPException(
             status_code=400, detail="Missing state parameter: Missing User ID!"
@@ -1032,9 +1031,8 @@ def get_google_tokens(state: str, code: str):
 
 
 @app.get("/spotify_auth")
-def spotify_login(user_id: int):
+def spotify_login(user_id: str):
     state_json = json.dumps({"user_id": user_id})
-    user_id = int(user_id)
     state = base64.urlsafe_b64encode(state_json.encode()).decode()
     what_I_want = "playlist-read-private playlist-modify-private playlist-modify-public playlist-read-collaborative"
     auth_url = "https://accounts.spotify.com/authorize?" + "&".join(
@@ -1098,25 +1096,27 @@ def get_spotify_token(state: str, code: str):
 
 
 @app.get("/playlists/{user_id}")
-def get_playlists(user_id: int):
+def get_playlists(user_id: str):
     open_to_db = db_url.cursor()
     open_to_db.execute(
         "SELECT playlist_name, platform, songs, youtube_playlist_id, spotify_playlist_id, created_at FROM playlists WHERE user_id = %s AND playlist_name IS NOT NULL",
-        (user_id,)
+        (user_id,),
     )
     playlists = open_to_db.fetchall()
     open_to_db.close()
-    return {"playlists": [
-        {
-            "name": p[0],
-            "platform": p[1],
-            "songs": p[2],
-            "youtube_playlist_id": p[3],
-            "spotify_playlist_id": p[4],
-            "created_at": str(p[5])
-        }
-        for p in playlists
-    ]}
+    return {
+        "playlists": [
+            {
+                "name": p[0],
+                "platform": p[1],
+                "songs": p[2],
+                "youtube_playlist_id": p[3],
+                "spotify_playlist_id": p[4],
+                "created_at": str(p[5]),
+            }
+            for p in playlists
+        ]
+    }
 
 
 @app.get("/")
