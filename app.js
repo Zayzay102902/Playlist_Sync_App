@@ -128,7 +128,7 @@ function initLoginPage() {
     } else if (result.data.redirect_url) {
       const dest = result.data.redirect_url.startsWith('http')
         ? result.data.redirect_url
-        : `http://127.0.0.1:8000${result.data.redirect_url}`;
+        : `https://connect-to-the-music.onrender.com${result.data.redirect_url}`;
       window.location.href = dest;
     } else if (result.data.user_id) {
       setUserId(result.data.user_id);
@@ -479,19 +479,53 @@ function initModals() {
     );
   });
 
+  // --- LOGOUT ---
+  document.getElementById('btn-logout').addEventListener('click', () => {
+    openModal('modal-logout');
+  });
+
+  document.getElementById('btn-logout-cancel').addEventListener('click', () => {
+    closeModal('modal-logout');
+  });
+
+  document.getElementById('btn-logout-confirm').addEventListener('click', async () => {
+    const userId = parseInt(getUserId(), 10);
+    try {
+      const res = await fetch(`${BASE_URL}/logout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user_id: userId }),
+      });
+      if (res.ok) {
+        closeModal('modal-logout');
+        localStorage.removeItem('user_id');
+        showPage('login-page');
+      } else {
+        const data = await res.json();
+        alert(`Error: ${data.detail || 'Could not log out.'}`);
+      }
+    } catch {
+      alert('Failed to connect to the server. Please try again.');
+    }
+  });
+
   // --- DELETE ACCOUNT ---
-  document.getElementById('btn-delete-account').addEventListener('click', async () => {
-    const confirmed = confirm('Are you sure you want to delete your account? This cannot be undone.');
-    if (!confirmed) return;
+  document.getElementById('btn-delete-account').addEventListener('click', () => {
+    openModal('modal-delete-account');
+  });
 
+  document.getElementById('btn-delete-account-cancel').addEventListener('click', () => {
+    closeModal('modal-delete-account');
+  });
+
+  document.getElementById('btn-delete-account-confirm').addEventListener('click', async () => {
     const userId = getUserId();
-
     try {
       const res = await fetch(`${BASE_URL}/delete_account?user_id=${encodeURIComponent(userId)}`, {
         method: 'DELETE',
       });
-
       if (res.ok) {
+        closeModal('modal-delete-account');
         localStorage.clear();
         showPage('login-page');
       } else {

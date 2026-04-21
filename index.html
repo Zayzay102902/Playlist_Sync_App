@@ -55,6 +55,7 @@
         <button class="btn btn-sm" id="btn-sync-playlist">Sync Playlist</button>
         <button class="btn btn-sm" id="btn-delete-playlist">Delete Playlist</button>
         <button class="btn btn-sm btn-danger" id="btn-delete-account">Delete Account</button>
+        <button class="btn btn-sm btn-danger" id="btn-logout">Logout</button>
       </div>
     </nav>
     <main class="dashboard-main">
@@ -155,6 +156,29 @@
     </div>
   </div>
 
+  <!-- ===== MODAL: LOGOUT ===== -->
+  <div id="modal-logout" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-logout-title">
+    <div class="modal-card">
+      <button class="modal-close" aria-label="Close">&times;</button>
+      <h2 id="modal-logout-title" class="modal-title">Logout</h2>
+      <p>Are you sure you want to log out?</p>
+      <button class="btn btn-danger btn-full" id="btn-logout-confirm">Logout</button>
+      <button class="btn btn-full" id="btn-logout-cancel">Cancel</button>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: DELETE ACCOUNT ===== -->
+  <div id="modal-delete-account" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="modal-delete-account-title">
+    <div class="modal-card">
+      <button class="modal-close" aria-label="Close">&times;</button>
+      <h2 id="modal-delete-account-title" class="modal-title">Delete Account</h2>
+      <p>Are you sure you want to delete your account? This cannot be undone.</p>
+      <button class="btn btn-danger btn-full" id="btn-delete-account-confirm">Delete Account</button>
+      <button class="btn btn-full" id="btn-delete-account-cancel">Cancel</button>
+    </div>
+  </div>
+
   <script src="/static/app.js"></script>
 </body>
 </html>
+

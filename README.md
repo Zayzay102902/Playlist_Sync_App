@@ -26,6 +26,7 @@ A full-stack web application that allows users to create, sync, copy, and manage
    - [Copy Playlist](#copy-playlist)
    - [Sync Playlist](#sync-playlist)
    - [Delete Playlist](#delete-playlist)
+   - [Logout](#logout)
    - [Delete Account](#delete-account)
 10. [API Endpoints Reference](#api-endpoints-reference)
 11. [Notes and Limitations](#notes-and-limitations)
@@ -39,6 +40,7 @@ A full-stack web application that allows users to create, sync, copy, and manage
 - **Copy a Playlist** — Copy a playlist from one platform to the other. The app searches for each song on the target platform and recreates the playlist there.
 - **Sync Playlists** — For playlists that live on both platforms, pick one as the source of truth and overwrite the other platform's version with its songs.
 - **Delete a Playlist** — Remove a playlist from one platform, both platforms, or just the database.
+- **Logout** — Securely log out of your session. Clears your OAuth access tokens from the database and returns you to the login page, requiring full re-authentication on your next visit.
 - **Delete Your Account** — Permanently remove your account and all associated playlists from the database with a single confirmation.
 
 ---
@@ -115,10 +117,12 @@ SPOTIFY_REDIRECT_URI=http://127.0.0.1:8000/api/spotify/callback
 2. Open the query tool for your new database and run the following SQL **all at once**. You can copy and paste the entire block and execute it with no modifications:
 
 ```sql
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 CREATE TYPE platform_enum AS ENUM ('youtube', 'spotify', 'both');
 
 CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     youtube_refresh_token TEXT,
@@ -130,20 +134,19 @@ CREATE TABLE users (
 );
 
 CREATE TABLE playlists (
-    id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES users(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     playlist_name TEXT,
     platform platform_enum,
     songs JSONB,
     youtube_playlist_id TEXT,
     spotify_playlist_id TEXT,
+    created_at TIMESTAMP DEFAULT NOW(),
     UNIQUE (user_id, playlist_name)
 );
-
-ALTER TABLE playlists ADD COLUMN created_at TIMESTAMP DEFAULT NOW();
 ```
 
-> **Important:** The `platform_enum` type must be created before the tables — that's why it comes first. The `ALTER TABLE` at the end adds a `created_at` column that stores when each playlist was added to the database. This timestamp is displayed on each playlist card in the dashboard.
+> **Important:** The `pgcrypto` extension must be enabled first — it provides `gen_random_uuid()` used to generate UUID primary keys. The `platform_enum` type must be created before the tables. Both tables use UUIDs as primary keys rather than auto-incrementing integers, which prevents sequential ID enumeration.
 
 ---
 
@@ -300,6 +303,21 @@ The app will find the playlist on the selected platform, pull its songs, save ev
 
 ---
 
+### Logout
+
+**What it does:** Ends your current session securely. Clears your YouTube and Spotify access tokens from the database (refresh tokens are preserved so re-authentication is smooth), removes your session from the browser, and returns you to the login page.
+
+**How to use it:**
+- Click **"Logout"** in the navbar (styled in red).
+- A confirmation modal will appear asking "Are you sure you want to log out?"
+- Click **"Logout"** to confirm, or **"Cancel"** to close the modal and stay on the dashboard.
+
+> The next time you log in, the backend will detect that your access tokens are cleared and redirect you through Google and/or Spotify OAuth to re-authenticate. This is expected — your playlists and account data are fully preserved.
+
+**Backend endpoint:** `POST /logout`
+
+---
+
 ### Delete Account
 
 **What it does:** Permanently deletes your user account and all your playlists from the database.
@@ -330,6 +348,7 @@ The app will find the playlist on the selected platform, pull its songs, save ev
 | `POST`   | `/copy_playlist`            | `name`, `user_id`, `platform`, `sync` (bool)                 | Copies playlist to the other platform                    |
 | `POST`   | `/sync_playlist`            | `name`, `user_id`, `override_platform`                       | Overwrites one platform's playlist with the other's      |
 | `DELETE` | `/delete_playlist`          | `name`, `user_id`, `platform`                                | Deletes playlist from platform(s) and/or DB              |
+| `POST`   | `/logout`                   | `user_id`                                                    | Clears access tokens in DB; user must re-auth on login   |
 | `DELETE` | `/delete_account`           | `user_id`                                                    | Deletes user account and all associated playlists        |
 
 ---

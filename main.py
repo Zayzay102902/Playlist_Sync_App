@@ -63,6 +63,10 @@ class Add_Playlist_Input(BaseModel):
     user_id: int
 
 
+class Logout_Input(BaseModel):
+    user_id: int
+
+
 def check_youtube_playlist_exists(name: str, yt_access_token: str):
     response = requests.get(
         "https://www.googleapis.com/youtube/v3/playlists?part=snippet&mine=true",
@@ -897,6 +901,30 @@ def delete_playlist(name: str, platform: Platform, user_id: int):
     return {
         "message": f"Playlist '{name}' deleted successfully from {current_platform}."
     }
+
+
+@app.post("/logout")
+def logout(data: Logout_Input):
+    open_to_db = db_url.cursor()
+
+    open_to_db.execute("SELECT id FROM users WHERE id = %s", (data.user_id,))
+    if not open_to_db.fetchone():
+        open_to_db.close()
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    try:
+        open_to_db.execute(
+            "UPDATE users SET youtube_access_token = NULL, spotify_access_token = NULL, youtube_token_expiry = NULL, spotify_token_expiry = NULL WHERE id = %s",
+            (data.user_id,),
+        )
+        db_url.commit()
+    except Exception as e:
+        db_url.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        open_to_db.close()
+
+    return {"message": "Logged out successfully."}
 
 
 @app.delete("/delete_account")
