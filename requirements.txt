@@ -6,6 +6,6 @@ requests
 pydantic
 python-dotenv
 google-auth
-google-auth-oauthlib
+google-auth-oauthlib==0.4.6
 google-auth-httplib2
 python-multipart
