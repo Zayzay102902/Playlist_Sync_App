@@ -1,0 +1,11 @@
+fastapi
+uvicorn
+psycopg2-binary
+bcrypt
+requests
+pydantic
+python-dotenv
+google-auth
+google-auth-oauthlib
+google-auth-httplib2
+python-multipart
