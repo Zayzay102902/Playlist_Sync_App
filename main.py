@@ -968,7 +968,7 @@ def google_login(user_id: str):
         redirect_uri=os.getenv("GOOGLE_REDIRECT_URI"),
     )
     auth_url, _ = flow.authorization_url(
-        state=state, access_type="offline", prompt="consent", code_challenge_method=None
+        state=state, access_type="offline", prompt="consent"
     )
 
     return RedirectResponse(auth_url)
@@ -999,7 +999,6 @@ def get_google_tokens(state: str, code: str):
     )
 
     flow.fetch_token(code=code, code_verifier=None)
-    flow.fetch_token(code=code)
     cred = flow.credentials
 
     access_token_you = cred.token
