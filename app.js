@@ -187,7 +187,7 @@ function initCreateAccountPage() {
     } else if (result.data.redirect_url) {
       const dest = result.data.redirect_url.startsWith('http')
         ? result.data.redirect_url
-        : `http://127.0.0.1:8000${result.data.redirect_url}`;
+        : `https://connect-to-the-music.onrender.com${result.data.redirect_url}`;
       window.location.href = dest;
     } else if (result.data.user_id) {
       setUserId(result.data.user_id);
@@ -366,7 +366,7 @@ function initModals() {
   document.querySelector('#modal-create .modal-action-btn').addEventListener('click', () => {
     const name     = document.getElementById('cp-name').value.trim();
     const platform = document.getElementById('cp-platform').value;
-    const userId   = parseInt(getUserId(), 10);
+    const userId = getUserId();
 
     if (!name) {
       setModalError('modal-create', 'Please enter a playlist name.');
@@ -390,7 +390,7 @@ function initModals() {
   document.querySelector('#modal-add .modal-action-btn').addEventListener('click', () => {
     const name     = document.getElementById('ap-name').value.trim();
     const platform = document.getElementById('ap-platform').value;
-    const userId   = parseInt(getUserId(), 10);
+    const userId = getUserId();
 
     if (!name) {
       setModalError('modal-add', 'Please enter a playlist name.');
@@ -415,7 +415,7 @@ function initModals() {
     const name     = document.getElementById('cop-name').value.trim();
     const platform = document.getElementById('cop-platform').value;
     const sync     = document.getElementById('cop-sync').checked;
-    const userId   = parseInt(getUserId(), 10);
+    const userId = getUserId();
 
     if (!name) {
       setModalError('modal-copy', 'Please enter a playlist name.');
@@ -439,7 +439,7 @@ function initModals() {
   document.querySelector('#modal-sync .modal-action-btn').addEventListener('click', () => {
     const name     = document.getElementById('scp-name').value.trim();
     const platform = document.getElementById('scp-platform').value;
-    const userId   = parseInt(getUserId(), 10);
+    const userId = getUserId();
 
     if (!name) {
       setModalError('modal-sync', 'Please enter a playlist name.');
@@ -489,7 +489,7 @@ function initModals() {
   });
 
   document.getElementById('btn-logout-confirm').addEventListener('click', async () => {
-    const userId = parseInt(getUserId(), 10);
+    const userId = getUserId();
     try {
       const res = await fetch(`${BASE_URL}/logout`, {
         method: 'POST',
