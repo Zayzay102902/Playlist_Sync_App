@@ -1085,3 +1085,13 @@ def get_playlists(user_id: str):
 @app.get("/")
 def serve_frontend():
     return FileResponse("index.html")
+
+
+@app.get("/privacy")
+def privacy():
+    return FileResponse("privacy.html")
+
+
+@app.get("/terms")
+def terms():
+    return FileResponse("terms.html")
