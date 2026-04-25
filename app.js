@@ -20,7 +20,7 @@ function setUserId(id) {
 // PAGE ROUTING
 // ============================================================
 
-const PAGE_IDS = ['login-page', 'create-account-page', 'dashboard-page'];
+const PAGE_IDS = ['landing-page', 'dashboard-page'];
 
 function showPage(pageId) {
   PAGE_IDS.forEach(id => {
@@ -30,7 +30,7 @@ function showPage(pageId) {
 
 function requireAuth() {
   if (!getUserId()) {
-    showPage('login-page');
+    showPage('landing-page');
     return false;
   }
   return true;
@@ -66,133 +66,17 @@ function escapeHtml(str) {
 }
 
 // ============================================================
-// FETCH-BASED AUTH REQUEST
-// Used for login and create_user. The backend returns 200 JSON for
-// all outcomes, including OAuth redirects — it sends
-// {"redirect_url": "/google_auth?user_id=X"} instead of a 303 so
-// that the Fetch API never sees a redirect and we can read the body.
+// LANDING PAGE
 // ============================================================
 
-function makeAuthRequest(url, body) {
-  return fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  }).then(response =>
-    response.json().then(data => ({ status: response.status, data }))
-  );
-}
-
-// ============================================================
-// LOGIN PAGE
-// ============================================================
-
-function initLoginPage() {
-  document.getElementById('go-to-create').addEventListener('click', (e) => {
-    e.preventDefault();
-    showPage('create-account-page');
-  });
-
-  document.getElementById('login-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const errorEl = document.getElementById('login-error');
-    hideError(errorEl);
-
-    const username = document.getElementById('login-username').value.trim();
-    const password = document.getElementById('login-password').value;
-
-    if (!username || !password) {
-      showError(errorEl, 'Please enter your username and password.');
-      return;
-    }
-
-    const btn = e.target.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    btn.textContent = 'Logging in...';
-
-    let result;
-    try {
-      result = await makeAuthRequest(`${BASE_URL}/login`, { username, password });
-    } catch {
-      btn.disabled = false;
-      btn.textContent = 'Login';
-      showError(errorEl, 'Could not connect to the server. Is the backend running?');
-      return;
-    }
-
-    btn.disabled = false;
-    btn.textContent = 'Login';
-
-    if (result.status >= 400) {
-      showError(errorEl, result.data.detail || 'Login failed. Please try again.');
-    } else if (result.data.redirect_url) {
-      const dest = result.data.redirect_url.startsWith('http')
-        ? result.data.redirect_url
-        : `https://connect-to-the-music.onrender.com${result.data.redirect_url}`;
-      window.location.href = dest;
-    } else if (result.data.user_id) {
-      setUserId(result.data.user_id);
+function initLandingPage() {
+  document.getElementById('btn-google-login').addEventListener('click', () => {
+    const userId = getUserId();
+    if (userId) {
       showPage('dashboard-page');
       loadPlaylists();
-    }
-  });
-}
-
-// ============================================================
-// CREATE ACCOUNT PAGE
-// ============================================================
-
-function initCreateAccountPage() {
-  document.getElementById('go-to-login').addEventListener('click', (e) => {
-    e.preventDefault();
-    showPage('login-page');
-  });
-
-  document.getElementById('create-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const errorEl = document.getElementById('create-error');
-    hideError(errorEl);
-
-    const username = document.getElementById('create-username').value.trim();
-    const password = document.getElementById('create-password').value;
-
-    if (!username || !password) {
-      showError(errorEl, 'Please enter a username and password.');
-      return;
-    }
-    if (username.length < 2) {
-      showError(errorEl, 'Username must be at least 2 characters.');
-      return;
-    }
-
-    const btn = e.target.querySelector('button[type="submit"]');
-    btn.disabled = true;
-    btn.textContent = 'Creating account...';
-
-    let result;
-    try {
-      result = await makeAuthRequest(`${BASE_URL}/create_user`, { username, password });
-    } catch {
-      btn.disabled = false;
-      btn.textContent = 'Verify';
-      showError(errorEl, 'Could not connect to the server. Is the backend running?');
-      return;
-    }
-
-    btn.disabled = false;
-    btn.textContent = 'Verify';
-
-    if (result.status >= 400) {
-      showError(errorEl, result.data.detail || 'Account creation failed. Please try again.');
-    } else if (result.data.redirect_url) {
-      const dest = result.data.redirect_url.startsWith('http')
-        ? result.data.redirect_url
-        : `https://connect-to-the-music.onrender.com${result.data.redirect_url}`;
-      window.location.href = dest;
-    } else if (result.data.user_id) {
-      setUserId(result.data.user_id);
-      showPage('dashboard-page');
-      loadPlaylists();
+    } else {
+      window.location.href = `${BASE_URL}/google_auth`;
     }
   });
 }
@@ -326,8 +210,12 @@ async function executeModalAction(modalId, apiFn) {
       closeModal(modalId);
       loadPlaylists();
     } else {
-      const data = await res.json();
-      setModalError(modalId, data.detail || 'An error occurred. Please try again.');
+      try {
+        const data = await res.json();
+        setModalError(modalId, data.detail || 'An error occurred. Please try again.');
+      } catch {
+        setModalError(modalId, 'An error occurred. Please try again.');
+      }
     }
   } catch (err) {
     setModalError(modalId, err.message || 'Failed to connect to the server.');
@@ -499,7 +387,7 @@ function initModals() {
       if (res.ok) {
         closeModal('modal-logout');
         localStorage.removeItem('user_id');
-        showPage('login-page');
+        showPage('landing-page');
       } else {
         const data = await res.json();
         alert(`Error: ${data.detail || 'Could not log out.'}`);
@@ -527,7 +415,7 @@ function initModals() {
       if (res.ok) {
         closeModal('modal-delete-account');
         localStorage.clear();
-        showPage('login-page');
+        showPage('landing-page');
       } else {
         const data = await res.json();
         alert(`Error: ${data.detail || 'Could not delete account.'}`);
@@ -552,8 +440,7 @@ function initDashboard() {
 // ============================================================
 
 function init() {
-  initLoginPage();
-  initCreateAccountPage();
+  initLandingPage();
   initModals();
   initDashboard();
 
@@ -570,13 +457,13 @@ function init() {
     return;
   }
 
-  // Route to dashboard if already logged in, otherwise show login.
+  // Route to dashboard if already logged in, otherwise show landing page.
   const userId = getUserId();
   if (userId) {
     showPage('dashboard-page');
     loadPlaylists();
   } else {
-    showPage('login-page');
+    showPage('landing-page');
   }
 }
 

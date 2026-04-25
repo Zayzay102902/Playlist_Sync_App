@@ -8,39 +8,11 @@
 </head>
 <body>
 
-  <!-- ===== LOGIN PAGE ===== -->
-  <div id="login-page" class="page">
+  <!-- ===== LANDING PAGE ===== -->
+  <div id="landing-page" class="page">
     <div class="auth-container">
-      <h1 class="app-title">🎶 Connect to the Music 🎶</h1>
-      <form id="login-form" class="auth-form" novalidate>
-        <div class="input-group">
-          <input type="text" id="login-username" class="input-field" placeholder="Username" autocomplete="username" />
-        </div>
-        <div class="input-group">
-          <input type="password" id="login-password" class="input-field" placeholder="Password" autocomplete="current-password" />
-        </div>
-        <div id="login-error" class="error-msg hidden"></div>
-        <button type="submit" class="btn btn-primary btn-full">Login</button>
-        <p class="auth-switch">Don't have an account? <a href="#" id="go-to-create" class="text-link">Create Account</a></p>
-      </form>
-    </div>
-  </div>
-
-  <!-- ===== CREATE ACCOUNT PAGE ===== -->
-  <div id="create-account-page" class="page hidden">
-    <div class="auth-container">
-      <h1 class="app-title">🎶 Connect to the Music 🎶</h1>
-      <form id="create-form" class="auth-form" novalidate>
-        <div class="input-group">
-          <input type="text" id="create-username" class="input-field" placeholder="Username" autocomplete="username" />
-        </div>
-        <div class="input-group">
-          <input type="password" id="create-password" class="input-field" placeholder="Password" autocomplete="new-password" />
-        </div>
-        <div id="create-error" class="error-msg hidden"></div>
-        <button type="submit" class="btn btn-primary btn-full">Verify</button>
-        <p class="auth-switch"><a href="#" id="go-to-login" class="text-link back-link">← Back to Login</a></p>
-      </form>
+      <h1 class="app-title">🎵 Connect to the Music 🎵</h1>
+      <button id="btn-google-login" class="btn btn-primary btn-full">Continue with Google</button>
     </div>
   </div>
 
@@ -181,4 +153,3 @@
   <script src="/static/app.js"></script>
 </body>
 </html>
-
