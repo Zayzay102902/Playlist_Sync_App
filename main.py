@@ -927,7 +927,11 @@ def get_google_tokens(state: str, code: str):
     }
     flow = Flow.from_client_config(
         client_config,
-        scopes=["https://www.googleapis.com/auth/youtube.force-ssl"],
+        scopes=[
+            "https://www.googleapis.com/auth/youtube.force-ssl",
+            "openid",
+            "https://www.googleapis.com/auth/userinfo.profile",
+        ],
         redirect_uri=os.getenv("GOOGLE_REDIRECT_URI"),
     )
 
