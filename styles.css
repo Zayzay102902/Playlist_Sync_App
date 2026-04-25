@@ -98,6 +98,13 @@ body {
   padding: 2rem 1rem;
 }
 
+#btn-google-login {
+  display: block;
+  max-width: 400px;
+  width: 100%;
+  margin: 0 auto;
+}
+
 .auth-form {
   width: 100%;
   max-width: 400px;
